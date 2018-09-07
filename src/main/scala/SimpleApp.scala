@@ -1,7 +1,7 @@
 /* SimpleApp.scala */
 import org.apache.spark.SparkContext
 import org.apache.spark.rdd.RDD
-import org.apache.spark.sql.{DataFrame, SparkSession}
+import org.apache.spark.sql.{DataFrame, Dataset, SparkSession}
 
 import scala.io.Source
 
@@ -11,6 +11,7 @@ object SimpleApp {
 
   def main(args: Array[String]) {
     val spark = SparkSession.builder.appName("Simple Application").getOrCreate()
+    spark.sqlContext.udf.register("strToBoolean", (s: String) => s.toBoolean)
 
 //    val logFile = "/enc/home/miguel/documents/it/spark/spark-2.3.1-bin-hadoop2.7/README.md"
 //    val logData = spark.read.textFile(logFile).cache()
@@ -20,19 +21,25 @@ object SimpleApp {
 
     // Load the (typed!) DataFrames(?) here and pass them to the functions
 
-    val df = spark.read
-      .option("header", "true")
-      .csv("/enc/home/miguel/documents/it/spark/riaktr/src/test/resources/cells.csv")
-    val resDf = doThis(df)
-    println(s"→ res: $resDf")
+//    val df = spark.read
+//      .option("header", "true")
+//      .csv("/enc/home/miguel/documents/it/spark/riaktr/src/test/resources/cells.csv")
+//    val resDf = mostUsedCells(df)
+//    println(s"→ res: $resDf")
 
     spark.stop()
   }
 
-  def doThis(df: DataFrame): DataFrame = {
-//    val cells = Source.fromURL(getClass.getResource("/cells.csv"))
+  case class Cell(cell_id: String, longitude: String, latitude: String)
+  case class CDR(caller_id: String,
+                 callee_id: String,
+                 cell_id: String,
+                 duration: Double,
+                 `type`: String,
+                 dropped: Int
+                )
 
-//    spark.sparkContext.parallelize(Seq(3, 2, 1))
+  def mostUsedCells(df: Dataset[CDR]): DataFrame = {
     df.select("cell_id")
   }
 

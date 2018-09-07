@@ -1,6 +1,7 @@
-import com.holdenkarau.spark.testing.{DataFrameSuiteBase, DataframeGenerator, RDDComparisons, SharedSparkContext}
-import org.apache.spark.rdd.RDD
-import org.apache.spark.sql.{DataFrame, Dataset, SQLContext, SparkSession}
+import SimpleApp.CDR
+import com.holdenkarau.spark.testing.{DataFrameSuiteBase, RDDComparisons}
+import org.apache.spark.sql._
+import org.apache.spark.sql.types.{BooleanType, StructField, StructType}
 import org.scalatest.{BeforeAndAfterEach, FunSpec}
 
 class SimpleAppSpec
@@ -27,53 +28,41 @@ class SimpleAppSpec
 
   describe("haha") {
 
+    //  implicit def bool2int(b:Boolean) = if (b) 1 else 0
+    implicit def string2Bool(i: String): Boolean = i == "1"
+
     it("osef") {
 
+      import org.apache.spark.sql.Encoders
       import sqlContext.implicits._
 
-//      val resultRDD = SimpleApp.doThis(sparkSession)
-//      assertRDDEquals(expectedRDD, resultRDD)
-//      //      assertRDDEqualsWithOrder(expectedRDD, resultRDD)
+      val ee = Encoders.product[CDR]
+      println(s"→→ ${ee}")
+      println(s"→→ ${ee.clsTag}")
+      println(s"→→ ${ee.schema}")
 
-//      // Only comparing RDDs work ===================================================
-//val expectedDF = sparkSession.sparkContext.parallelize(Seq("A3245", "A2153", "A9481")).toDF
-//      val df = sparkSession.read
-//        .option("header", "true")
-//        .csv("/enc/home/miguel/documents/it/spark/riaktr/src/test/resources/cells.csv")
-//      val resDf = SimpleApp.doThis(df)
-//      assertRDDEquals(expectedDF.rdd, resDf.rdd)
-////      assertDataFrameEquals(expectedDF, resDf)
-//      // ============================================================================
 
-      // Trying to compare DataFrames ===============================================
+      //      val cellsDF = sparkSession.read
+      //        .option("header", "true")
+      //        .csv("/enc/home/miguel/documents/it/spark/riaktr/src/test/resources/cells.csv")
+      //        .as[Cell]
+      val cdrDF = sparkSession.read
+        .option("header", "true")
+        .schema(Encoders.product[CDR].schema)
+        .csv("/enc/home/miguel/documents/it/spark/riaktr/src/test/resources/cdrs.csv")
+        .as[CDR]
+
       val expectedDF = sparkSession.sparkContext
         .parallelize(Seq("A3245", "A2153", "A9481"))
         .toDF("cell_id")
-      val df = sparkSession.read
-        .option("header", "true")
-        .csv("/enc/home/miguel/documents/it/spark/riaktr/src/test/resources/cells.csv")
-      val resDf = SimpleApp.doThis(df)
-      assertDataFrameEquals(expectedDF, resDf)
-      // ============================================================================
 
-//      println(":::")
-//      val cells: DataFrame = sparkSession.read
-//        .option("header", "true")
-//        .csv("src/test/resources/cells.csv")
-//      println(cells.getClass)
-//      println(cells.take(100))
+//      assertDataFrameEquals(expectedDF, SimpleApp.mostUsedCells(cdrDF))
+//      println(s"→→→ ${cdrDF.schema}")
+//      cdrDF.show
+//      cdrDF.filter(_.dropped > 0).show()
+//      cdrDF.printSchema()
 
     }
-
-//    it("haha") {
-//      //      sparkSession.read.csv("cells.csv")
-//      val cells = sparkSession.read
-////        .option("header", "false")
-//        .csv("src/test/resources/cells.csv")
-//      println("... " + cells.toDF().getClass)
-//      println(s"→ 'cells' is a ${cells.getClass}")
-//      cells.take(10).map(println)
-//    }
 
   }
 
