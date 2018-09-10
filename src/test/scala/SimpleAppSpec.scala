@@ -109,4 +109,20 @@ class SimpleAppSpec
     }
 
   }
+
+  describe("lessThan10minCallCount") {
+
+    it("should correctly compute the count of calls that lasted less than 10'") {
+
+      val inDF = tupleToCDR(Seq(
+        ("A3245", "callee_id1", "cell_id1", 0.9, "on-net", 0),
+        ("A3245", "callee_id1", "cell_id1", 10.2, "international", 0),
+        ("A3245", "callee_id1", "cell_id1", 1.2, "off-net", 0),
+        ("A3245", "callee_id1", "cell_id1", 20.3, "on-net", 0),
+        ("A3241", "callee_id20", "cell_id2", 3.4, "on-net", 1)
+      ))
+      assert(3 === SimpleApp.lessThan10minCallCount(inDF))
+    }
+
+  }
 }

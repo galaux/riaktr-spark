@@ -59,4 +59,7 @@ object SimpleApp {
     onNetCalls.reduce(_+_) / onNetCalls.count()
   }
 
+  def lessThan10minCallCount(cdrDS: Dataset[CDR]): Long =
+    cdrDS.filter(_.duration <= 10.0).count()
+
 }
