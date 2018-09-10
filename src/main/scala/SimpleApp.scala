@@ -1,5 +1,5 @@
 /* SimpleApp.scala */
-import org.apache.spark.sql.{DataFrame, Dataset, SparkSession}
+import org.apache.spark.sql.{DataFrame, Dataset, Row, SparkSession}
 
 
 object SimpleApp {
@@ -8,7 +8,9 @@ object SimpleApp {
   val spark = SparkSession.builder.appName("Simple Application").getOrCreate()
   import spark.implicits._
 
-  case class Cell(cell_id: String, longitude: String, latitude: String)
+  case class Cell(cell_id: String,
+                  longitude: Double,
+                  latitude: Double)
   case class CDR(caller_id: String,
                  callee_id: String,
                  cell_id: String,
@@ -54,5 +56,12 @@ object SimpleApp {
 
   def lessThan10minCallCount(cdrDS: Dataset[CDR]): Long =
     cdrDS.filter(_.duration <= 10.0).count()
+
+  def top3CalleeIds(cdrDS: Dataset[CDR]): Seq[String] =
+    cdrDS.groupBy($"callee_id")
+      .count()
+      .sort($"count".desc)
+      .take(3)
+      .map { case Row(callee_id: String, _: Long) => callee_id }
 
 }
