@@ -1,13 +1,11 @@
 import SimpleApp.CDR
 import com.holdenkarau.spark.testing.{DataFrameSuiteBase, RDDComparisons}
 import org.apache.spark.sql._
-import org.apache.spark.sql.types.{BooleanType, StructField, StructType}
 import org.scalatest.{BeforeAndAfterEach, FunSpec}
 
 class SimpleAppSpec
   extends FunSpec
-//    with SharedSparkContext
-  with DataFrameSuiteBase
+    with DataFrameSuiteBase
     with RDDComparisons
     with BeforeAndAfterEach
 {
@@ -18,7 +16,6 @@ class SimpleAppSpec
     sparkSession = SparkSession.builder()
       .appName("udf testings")
       .master("local")
-      //      .config("", "")
       .getOrCreate()
   }
 
@@ -26,42 +23,26 @@ class SimpleAppSpec
     sparkSession.stop()
   }
 
-  describe("haha") {
 
-    //  implicit def bool2int(b:Boolean) = if (b) 1 else 0
-    implicit def string2Bool(i: String): Boolean = i == "1"
+  describe("distinctCalleeCount") {
 
-    it("osef") {
+    import sqlContext.implicits._
 
-      import org.apache.spark.sql.Encoders
-      import sqlContext.implicits._
+    it("should detect duplicate callees") {
 
-      val ee = Encoders.product[CDR]
-      println(s"→→ ${ee}")
-      println(s"→→ ${ee.clsTag}")
-      println(s"→→ ${ee.schema}")
-
-
-      //      val cellsDF = sparkSession.read
-      //        .option("header", "true")
-      //        .csv("/enc/home/miguel/documents/it/spark/riaktr/src/test/resources/cells.csv")
-      //        .as[Cell]
-      val cdrDF = sparkSession.read
-        .option("header", "true")
-        .schema(Encoders.product[CDR].schema)
-        .csv("/enc/home/miguel/documents/it/spark/riaktr/src/test/resources/cdrs.csv")
+      val inDF = sparkSession.sparkContext
+        .parallelize(
+          Seq[(String, String, String, Double, String, Int)](
+            ("A3245", "callee_id1", "cell_id1", 121.4, "type1", 0),
+            ("A3245", "callee_id1", "cell_id1", 121.4, "type1", 0),
+            ("A3245", "callee_id1", "cell_id1", 121.4, "type1", 0),
+            ("A3241", "callee_id20", "cell_id2", 122.4, "type2", 1),
+            ("A3241", "callee_id20", "cell_id2", 122.4, "type2", 1)
+          ))
+        .toDF("caller_id", "callee_id", "cell_id", "duration", "type", "dropped")
         .as[CDR]
 
-      val expectedDF = sparkSession.sparkContext
-        .parallelize(Seq("A3245", "A2153", "A9481"))
-        .toDF("cell_id")
-
-//      assertDataFrameEquals(expectedDF, SimpleApp.mostUsedCells(cdrDF))
-//      println(s"→→→ ${cdrDF.schema}")
-//      cdrDF.show
-//      cdrDF.filter(_.dropped > 0).show()
-//      cdrDF.printSchema()
-
+      assert(2 === SimpleApp.distinctCalleeCount(inDF))
     }
 
   }

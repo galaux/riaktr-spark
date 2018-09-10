@@ -43,4 +43,7 @@ object SimpleApp {
     df.select("cell_id")
   }
 
+  def distinctCalleeCount(cdrDS: Dataset[CDR]): Long =
+    cdrDS.select("callee_id").distinct().count()
+
 }
