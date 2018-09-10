@@ -1,136 +1,113 @@
 import SimpleApp.{CDR, Cell}
-import com.holdenkarau.spark.testing.{DataFrameSuiteBase, DatasetSuiteBase, RDDComparisons}
-import org.apache.spark.sql._
+import com.holdenkarau.spark.testing.{DatasetSuiteBase, RDDComparisons}
 import org.scalactic.TolerantNumerics
-import org.scalatest.{BeforeAndAfterEach, FunSpec}
+import org.scalatest.FunSpec
 
 class SimpleAppSpec
   extends FunSpec
     with DatasetSuiteBase
-    with RDDComparisons
-    with BeforeAndAfterEach
-{
-
-  var sparkSession: SparkSession = _
-
-  override def beforeEach() {
-    sparkSession = SparkSession.builder()
-      .appName("udf testings")
-      .master("local")
-      .getOrCreate()
-  }
-
-  override def afterEach() {
-    sparkSession.stop()
-  }
+    with RDDComparisons {
 
   import sqlContext.implicits._
   implicit val doubleEquality = TolerantNumerics.tolerantDoubleEquality(0.001)
 
-  def tupleToCDR(tuples: Seq[(String, String, String, Double, String, Int)]): Dataset[CDR] =
-    sparkSession.sparkContext
-      .parallelize(tuples)
-      .toDF("caller_id", "callee_id", "cell_id", "duration", "type", "dropped")
-      .as[CDR]
+  describe("distinctCalleeCount") {
 
-//  describe("distinctCalleeCount") {
-//
-//    it("should detect duplicate callees") {
-//
-//      val inDF = tupleToCDR(Seq(
-//        ("A3245", "callee_id1", "cell_id1", 121.4, "type1", 0),
-//        ("A3245", "callee_id1", "cell_id1", 121.4, "type1", 0),
-//        ("A3245", "callee_id1", "cell_id1", 121.4, "type1", 0),
-//        ("A3241", "callee_id20", "cell_id2", 122.4, "type2", 1),
-//        ("A3241", "callee_id20", "cell_id2", 122.4, "type2", 1)
-//      ))
-//      assert(2 === SimpleApp.distinctCalleeCount(inDF))
-//    }
-//
-//  }
-//
-//  describe("droppedCallCount") {
-//
-//    it("should correctly count dropped calls") {
-//
-//      val inDF = tupleToCDR(Seq(
-//        ("A3245", "callee_id1", "cell_id1", 121.4, "type1", 0),
-//        ("A3245", "callee_id1", "cell_id1", 121.4, "type1", 1),
-//        ("A3245", "callee_id1", "cell_id1", 121.4, "type1", 0),
-//        ("A3241", "callee_id20", "cell_id2", 122.4, "type2", 1),
-//        ("A3241", "callee_id20", "cell_id2", 122.4, "type2", 1)
-//      ))
-//      assert(3 === SimpleApp.droppedCallCount(inDF))
-//    }
-//
-//  }
-//
-//  describe("totalCallDuration") {
-//
-//    it("should correctly compute the total call duration") {
-//
-//      val inDF = tupleToCDR(Seq(
-//        ("A3245", "callee_id1", "cell_id1", 1.2, "type1", 0),
-//        ("A3241", "callee_id20", "cell_id2", 3.7, "type2", 1)
-//      ))
-//      assert(4.9 === SimpleApp.totalCallDuration(inDF))
-//    }
-//
-//  }
-//
-//  describe("internationalCallDuration") {
-//
-//    it("should correctly compute the international call duration") {
-//
-//      val inDF = tupleToCDR(Seq(
-//        ("A3245", "callee_id1", "cell_id1", 1.2, "on-net", 0),
-//        ("A3245", "callee_id1", "cell_id1", 1.2, "international", 0),
-//        ("A3245", "callee_id1", "cell_id1", 1.2, "off-net", 0),
-//        ("A3245", "callee_id1", "cell_id1", 2.3, "international", 0),
-//        ("A3241", "callee_id20", "cell_id2", 3.4, "international", 1)
-//      ))
-//      assert(6.9 === SimpleApp.internationalCallDuration(inDF))
-//    }
-//
-//  }
-//
-//  describe("onNetCallAverageDuration") {
-//
-//    it("should correctly compute the on-net call average duration") {
-//
-//      val inDF = tupleToCDR(Seq(
-//        ("A3245", "callee_id1", "cell_id1", 0.9, "on-net", 0),
-//        ("A3245", "callee_id1", "cell_id1", 1.2, "international", 0),
-//        ("A3245", "callee_id1", "cell_id1", 1.2, "off-net", 0),
-//        ("A3245", "callee_id1", "cell_id1", 2.3, "on-net", 0),
-//        ("A3241", "callee_id20", "cell_id2", 3.4, "on-net", 1)
-//      ))
-//      assert(2.2 === SimpleApp.onNetCallAverageDuration(inDF))
-//    }
-//
-//  }
-//
-//  describe("lessThan10minCallCount") {
-//
-//    it("should correctly compute the count of calls that lasted less than 10'") {
-//
-//      val inDF = tupleToCDR(Seq(
-//        ("A3245", "callee_id1", "cell_id1", 0.9, "on-net", 0),
-//        ("A3245", "callee_id1", "cell_id1", 10.2, "international", 0),
-//        ("A3245", "callee_id1", "cell_id1", 1.2, "off-net", 0),
-//        ("A3245", "callee_id1", "cell_id1", 20.3, "on-net", 0),
-//        ("A3241", "callee_id20", "cell_id2", 3.4, "on-net", 1)
-//      ))
-//      assert(3 === SimpleApp.lessThan10minCallCount(inDF))
-//    }
-//
-//  }
+    it("should detect duplicate callees") {
+
+      val inDF = Seq(
+        CDR("A3245", "callee_id1", "cell_id1", 121.4, "type1", 0),
+        CDR("A3245", "callee_id1", "cell_id1", 121.4, "type1", 0),
+        CDR("A3245", "callee_id1", "cell_id1", 121.4, "type1", 0),
+        CDR("A3241", "callee_id20", "cell_id2", 122.4, "type2", 1),
+        CDR("A3241", "callee_id20", "cell_id2", 122.4, "type2", 1)
+      ).toDS()
+      assert(2 === SimpleApp.distinctCalleeCount(inDF))
+    }
+
+  }
+
+  describe("droppedCallCount") {
+
+    it("should correctly count dropped calls") {
+
+      val inDF = Seq(
+        CDR("A3245", "callee_id1", "cell_id1", 121.4, "type1", 0),
+        CDR("A3245", "callee_id1", "cell_id1", 121.4, "type1", 1),
+        CDR("A3245", "callee_id1", "cell_id1", 121.4, "type1", 0),
+        CDR("A3241", "callee_id20", "cell_id2", 122.4, "type2", 1),
+        CDR("A3241", "callee_id20", "cell_id2", 122.4, "type2", 1)
+      ).toDS()
+      assert(3 === SimpleApp.droppedCallCount(inDF))
+    }
+
+  }
+
+  describe("totalCallDuration") {
+
+    it("should correctly compute the total call duration") {
+
+      val inDF = Seq(
+        CDR("A3245", "callee_id1", "cell_id1", 1.2, "type1", 0),
+        CDR("A3241", "callee_id20", "cell_id2", 3.7, "type2", 1)
+      ).toDS()
+      assert(4.9 === SimpleApp.totalCallDuration(inDF))
+    }
+
+  }
+
+  describe("internationalCallDuration") {
+
+    it("should correctly compute the international call duration") {
+
+      val inDF = Seq(
+        CDR("A3245", "callee_id1", "cell_id1", 1.2, "on-net", 0),
+        CDR("A3245", "callee_id1", "cell_id1", 1.2, "international", 0),
+        CDR("A3245", "callee_id1", "cell_id1", 1.2, "off-net", 0),
+        CDR("A3245", "callee_id1", "cell_id1", 2.3, "international", 0),
+        CDR("A3241", "callee_id20", "cell_id2", 3.4, "international", 1)
+      ).toDS()
+      assert(6.9 === SimpleApp.internationalCallDuration(inDF))
+    }
+
+  }
+
+  describe("onNetCallAverageDuration") {
+
+    it("should correctly compute the on-net call average duration") {
+
+      val cdrDS = Seq(
+        CDR("A3245", "callee_id1", "cell_id1", 0.9, "on-net", 0),
+        CDR("A3245", "callee_id1", "cell_id1", 1.2, "international", 0),
+        CDR("A3245", "callee_id1", "cell_id1", 1.2, "off-net", 0),
+        CDR("A3245", "callee_id1", "cell_id1", 2.3, "on-net", 0),
+        CDR("A3241", "callee_id20", "cell_id2", 3.4, "on-net", 1)
+      ).toDS()
+      assert(2.2 === SimpleApp.onNetCallAverageDuration(cdrDS))
+    }
+
+  }
+
+  describe("lessThan10minCallCount") {
+
+    it("should correctly compute the count of calls that lasted less than 10'") {
+
+      val cdrDS = Seq(
+        CDR("A3245", "callee_id1", "cell_id1", 0.9, "on-net", 0),
+        CDR("A3245", "callee_id1", "cell_id1", 10.2, "international", 0),
+        CDR("A3245", "callee_id1", "cell_id1", 1.2, "off-net", 0),
+        CDR("A3245", "callee_id1", "cell_id1", 20.3, "on-net", 0),
+        CDR("A3241", "callee_id20", "cell_id2", 3.4, "on-net", 1)
+      ).toDS()
+      assert(3 === SimpleApp.lessThan10minCallCount(cdrDS))
+    }
+
+  }
 
   describe("top3CalleIds") {
 
     it("should correctly compute the top 3 calle Ids") {
 
-      // TODO revoir toutes mes générations de DS en utilisant ça :
       val cdrDS = Seq(
         //  Caller ID, Callee ID, Cell ID, Dur., Type,     dropped
         CDR("1538257", "4623421", "A3245", 23.4, "on-net", 0),
