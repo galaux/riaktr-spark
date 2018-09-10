@@ -51,5 +51,7 @@ object SimpleApp {
   def totalCallDuration(cdrDS: Dataset[CDR]): Double =
     cdrDS.map(_.duration).reduce(_ + _)
 
+  def internationalCallDuration(cdrDS: Dataset[CDR]): Double =
+    totalCallDuration(cdrDS.filter(_.`type` == "international"))
 
 }
