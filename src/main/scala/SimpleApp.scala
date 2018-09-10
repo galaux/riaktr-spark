@@ -18,22 +18,15 @@ object SimpleApp {
                 )
 
   def main(args: Array[String]) {
-
-//    spark.sqlContext.udf.register("strToBoolean", (s: String) => s.toBoolean)
-
-//    val logFile = "/enc/home/miguel/documents/it/spark/spark-2.3.1-bin-hadoop2.7/README.md"
-//    val logData = spark.read.textFile(logFile).cache()
-//    val numAs = logData.filter(line => line.contains("a")).count()
-//    val numBs = logData.filter(line => line.contains("b")).count()
-//    println(s"Lines with a: $numAs, Lines with b: $numBs")
-
-    // Load the (typed!) DataFrames(?) here and pass them to the functions
-
-//    val df = spark.read
-//      .option("header", "true")
-//      .csv("/enc/home/miguel/documents/it/spark/riaktr/src/test/resources/cells.csv")
-//    val resDf = mostUsedCells(df)
-//    println(s"→ res: $resDf")
+    // FIXME wrong file opened. This is a WIP
+    val cdrDS = spark.read
+      .option("header", "true")
+      .csv("/enc/home/miguel/documents/it/spark/riaktr/src/test/resources/cells.csv")
+      .as[CDR]
+    println(
+      s"""- Most used cell:\t\t${mostUsedCells(cdrDS)}
+         |- Dictinct callee count:\t
+       """.stripMargin)
 
     spark.stop()
   }
