@@ -1,6 +1,7 @@
 import SimpleApp.CDR
 import com.holdenkarau.spark.testing.{DataFrameSuiteBase, RDDComparisons}
 import org.apache.spark.sql._
+import org.scalactic.TolerantNumerics
 import org.scalatest.{BeforeAndAfterEach, FunSpec}
 
 class SimpleAppSpec
@@ -24,6 +25,7 @@ class SimpleAppSpec
   }
 
   import sqlContext.implicits._
+  implicit val doubleEquality = TolerantNumerics.tolerantDoubleEquality(0.001)
 
   def tupleToCDR(tuples: Seq[(String, String, String, Double, String, Int)]): Dataset[CDR] =
     sparkSession.sparkContext
@@ -88,6 +90,22 @@ class SimpleAppSpec
         ("A3241", "callee_id20", "cell_id2", 3.4, "international", 1)
       ))
       assert(6.9 === SimpleApp.internationalCallDuration(inDF))
+    }
+
+  }
+
+  describe("onNetCallAverageDuration") {
+
+    it("should correctly compute the on-net call average duration") {
+
+      val inDF = tupleToCDR(Seq(
+        ("A3245", "callee_id1", "cell_id1", 0.9, "on-net", 0),
+        ("A3245", "callee_id1", "cell_id1", 1.2, "international", 0),
+        ("A3245", "callee_id1", "cell_id1", 1.2, "off-net", 0),
+        ("A3245", "callee_id1", "cell_id1", 2.3, "on-net", 0),
+        ("A3241", "callee_id20", "cell_id2", 3.4, "on-net", 1)
+      ))
+      assert(2.2 === SimpleApp.onNetCallAverageDuration(inDF))
     }
 
   }
