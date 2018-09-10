@@ -47,4 +47,26 @@ class SimpleAppSpec
 
   }
 
+  describe("droppedCallCount") {
+
+    import sqlContext.implicits._
+
+    it("should correctly count dropped calls") {
+
+      val inDF = sparkSession.sparkContext
+        .parallelize(
+          Seq[(String, String, String, Double, String, Int)](
+            ("A3245", "callee_id1", "cell_id1", 121.4, "type1", 0),
+            ("A3245", "callee_id1", "cell_id1", 121.4, "type1", 1),
+            ("A3245", "callee_id1", "cell_id1", 121.4, "type1", 0),
+            ("A3241", "callee_id20", "cell_id2", 122.4, "type2", 1),
+            ("A3241", "callee_id20", "cell_id2", 122.4, "type2", 1)
+          ))
+        .toDF("caller_id", "callee_id", "cell_id", "duration", "type", "dropped")
+        .as[CDR]
+
+      assert(3 === SimpleApp.droppedCallCount(inDF))
+    }
+
+  }
 }

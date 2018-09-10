@@ -46,4 +46,7 @@ object SimpleApp {
   def distinctCalleeCount(cdrDS: Dataset[CDR]): Long =
     cdrDS.select("callee_id").distinct().count()
 
+  def droppedCallCount(cdrDS: Dataset[CDR]): Long =
+    cdrDS.filter(_.dropped > 0).count()
+
 }
