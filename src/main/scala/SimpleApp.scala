@@ -1,16 +1,25 @@
 /* SimpleApp.scala */
-import org.apache.spark.SparkContext
-import org.apache.spark.rdd.RDD
 import org.apache.spark.sql.{DataFrame, Dataset, SparkSession}
-
-
 
 
 object SimpleApp {
 
+
+  val spark = SparkSession.builder.appName("Simple Application").getOrCreate()
+  import spark.implicits._
+
+  case class Cell(cell_id: String, longitude: String, latitude: String)
+  case class CDR(caller_id: String,
+                 callee_id: String,
+                 cell_id: String,
+                 duration: Double,
+                 `type`: String,
+                 dropped: Int
+                )
+
   def main(args: Array[String]) {
-    val spark = SparkSession.builder.appName("Simple Application").getOrCreate()
-    spark.sqlContext.udf.register("strToBoolean", (s: String) => s.toBoolean)
+
+//    spark.sqlContext.udf.register("strToBoolean", (s: String) => s.toBoolean)
 
 //    val logFile = "/enc/home/miguel/documents/it/spark/spark-2.3.1-bin-hadoop2.7/README.md"
 //    val logData = spark.read.textFile(logFile).cache()
@@ -29,15 +38,6 @@ object SimpleApp {
     spark.stop()
   }
 
-  case class Cell(cell_id: String, longitude: String, latitude: String)
-  case class CDR(caller_id: String,
-                 callee_id: String,
-                 cell_id: String,
-                 duration: Double,
-                 `type`: String,
-                 dropped: Int
-                )
-
   def mostUsedCells(df: Dataset[CDR]): DataFrame = {
     df.select("cell_id")
   }
@@ -47,5 +47,9 @@ object SimpleApp {
 
   def droppedCallCount(cdrDS: Dataset[CDR]): Long =
     cdrDS.filter(_.dropped > 0).count()
+
+  def totalCallDuration(cdrDS: Dataset[CDR]): Double =
+    cdrDS.map(_.duration).reduce(_ + _)
+
 
 }
