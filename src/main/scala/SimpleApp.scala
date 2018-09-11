@@ -26,16 +26,24 @@ object SimpleApp {
       .csv("/enc/home/miguel/documents/it/spark/riaktr/src/test/resources/cells.csv")
       .as[CDR]
     println(
-      s"""- Most used cell:\t\t${mostUsedCells(cdrDS)}
+      s"""- Most used cell:\t\t${mostUsedCell(cdrDS)}
          |- Dictinct callee count:\t
        """.stripMargin)
 
     spark.stop()
   }
 
-  def mostUsedCells(df: Dataset[CDR]): DataFrame = {
-    df.select("cell_id")
-  }
+  /**
+    * Computes the most used cell by the number of calls
+    * @param cdrDS the CDR dataset
+    * @return the most used cell by the number of calls
+    */
+  def mostUsedCell(cdrDS: Dataset[CDR]): String =
+    cdrDS.groupBy($"cell_id")
+      .count()
+      .sort($"count".desc)
+      .first()
+      .getAs[String]("cell_id")
 
   def distinctCalleeCount(cdrDS: Dataset[CDR]): Long =
     cdrDS.select("callee_id").distinct().count()

@@ -11,6 +11,22 @@ class SimpleAppSpec
   import sqlContext.implicits._
   implicit val doubleEquality = TolerantNumerics.tolerantDoubleEquality(0.001)
 
+  describe("mostUsedCells") {
+
+    it("should correctly compute the most used cell") {
+
+      val cellDS = Seq(
+        CDR("A3245", "callee_id1", "cell_id1", 121.4, "type1", 0),
+        CDR("A3245", "callee_id1", "cell_id1", 121.4, "type1", 0),
+        CDR("A3245", "callee_id1", "cell_id1", 121.4, "type1", 0),
+        CDR("A3241", "callee_id20", "cell_id2", 122.4, "type2", 1),
+        CDR("A3241", "callee_id20", "cell_id2", 122.4, "type2", 1)
+      ).toDS()
+      assert("cell_id1" === SimpleApp.mostUsedCell(cellDS))
+    }
+
+  }
+
   describe("distinctCalleeCount") {
 
     it("should detect duplicate callees") {
