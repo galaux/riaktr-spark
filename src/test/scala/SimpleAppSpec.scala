@@ -15,14 +15,20 @@ class SimpleAppSpec
 
     it("should correctly compute the most used cell") {
 
-      val cellDS = Seq(
+      val cdrDS = Seq(
         CDR("A3245", "callee_id1", "cell_id1", 121.4, "type1", 0),
-        CDR("A3245", "callee_id1", "cell_id1", 121.4, "type1", 0),
-        CDR("A3245", "callee_id1", "cell_id1", 121.4, "type1", 0),
-        CDR("A3241", "callee_id20", "cell_id2", 122.4, "type2", 1),
-        CDR("A3241", "callee_id20", "cell_id2", 122.4, "type2", 1)
+        CDR("A3245", "callee_id1", "cell_id2", 121.4, "type1", 0),
+        CDR("A3245", "callee_id1", "cell_id2", 121.4, "type1", 0),
+        CDR("A3245", "callee_id1", "cell_id3", 121.4, "type1", 0),
+        CDR("A3245", "callee_id1", "cell_id3", 121.4, "type1", 0),
+        CDR("A3245", "callee_id1", "cell_id3", 121.4, "type1", 0),
+        CDR("A3241", "callee_id20", "cell_id30", 122.4, "type2", 1),
+        CDR("A3241", "callee_id20", "cell_id30", 122.4, "type2", 1)
       ).toDS()
-      assert("cell_id1" === SimpleApp.mostUsedCell(cellDS))
+      assert(Map(
+        "A3245" -> "cell_id3",
+        "A3241" -> "cell_id30"
+      ) === SimpleApp.mostUsedCellPerCaller(cdrDS))
     }
 
   }
@@ -33,12 +39,13 @@ class SimpleAppSpec
 
       val inDF = Seq(
         CDR("A3245", "callee_id1", "cell_id1", 121.4, "type1", 0),
-        CDR("A3245", "callee_id1", "cell_id1", 121.4, "type1", 0),
+        CDR("A3245", "callee_id2", "cell_id1", 121.4, "type1", 0),
         CDR("A3245", "callee_id1", "cell_id1", 121.4, "type1", 0),
         CDR("A3241", "callee_id20", "cell_id2", 122.4, "type2", 1),
-        CDR("A3241", "callee_id20", "cell_id2", 122.4, "type2", 1)
+        CDR("A3241", "callee_id21", "cell_id2", 122.4, "type2", 1),
+        CDR("A3241", "callee_id22", "cell_id2", 122.4, "type2", 1)
       ).toDS()
-      assert(2 === SimpleApp.distinctCalleeCount(inDF))
+      assert(Map("A3245" -> 2, "A3241" -> 3) === SimpleApp.distinctCalleeCountPerCaller(inDF))
     }
 
   }
@@ -124,33 +131,34 @@ class SimpleAppSpec
 
   }
 
-  describe("top3CalleIds") {
+  describe("top3CalleeIds") {
 
     it("should correctly compute the top 3 calle Ids") {
 
       val cdrDS = Seq(
         //  Caller ID, Callee ID, Cell ID, Dur., Type,     dropped
-        CDR("1538257", "4623421", "A3245", 23.4, "on-net", 0),
-        CDR("1538257", "4623421", "A3245", 23.4, "on-net", 0),
-        CDR("4123564", "1493853", "A2153", 12.1, "off-net", 0),
-        CDR("4123564", "1493853", "A2153", 12.1, "off-net", 0),
-        CDR("1535123", "6123138", "A9481", 3.2," international", 0),
-        CDR("1538257", "4623421", "A5847", 23.4, "on-net", 1),
-        CDR("1538257", "5253463", "A3245", 3.8, "on-net", 0),
-        CDR("4123564", "1493853", "A2153", 12.1, "off-net", 1),
-        CDR("5283852", "6123138", "A3271", 6.3, "on-net", 0),
-        CDR("4123564", "1493853", "A2153", 12.1, "off-net", 0),
-        CDR("1538257", "4124566", "A3245", 43.7, "international", 0)
+        CDR("fromA",   "toZ",     "A3245", 23.4, "on-net", 0),
+        CDR("fromA",   "toY",     "A3245", 23.4, "on-net", 0),
+        //
+        CDR("fromB",   "toZ",     "A3245", 23.4, "on-net", 0),
+        //
+        CDR("fromC",   "toZ",     "A2153", 12.1, "off-net", 0),
+        CDR("fromC",   "toZ",     "A2153", 12.1, "off-net", 0),
+        CDR("fromC",   "toY",     "A2153", 12.1, "off-net", 0),
+        CDR("fromC",   "toY",     "A2153", 12.1, "off-net", 0),
+        CDR("fromC",   "toX",     "A2153", 12.1, "off-net", 0),
+        CDR("fromC",   "toX",     "A2153", 12.1, "off-net", 0),
+        CDR("fromC",   "toW",     "A2153", 12.1, "off-net", 0)
       ).toDS()
 
-      val cellDS = Seq(
-        Cell("A3245", 4.392824951181683, 50.794954017278855),
-        Cell("A2153", 4.39383786825585, 50.79807518156911),
-        Cell("A9481", 4.40814532192845, 50.79519411424009)
-      ).toDS()
-
-      assert(Seq("1493853", "4623421", "6123138") === SimpleApp.top3CalleeIds(cdrDS))
+      val expected = Map(
+        "fromA" -> Seq("toZ", "toY"),
+        "fromB" -> Seq("toZ"),
+        "fromC" -> Seq("toZ", "toY", "toX")
+      )
+      assert(expected === SimpleApp.top3CalleeIdsPerCaller(cdrDS))
     }
 
   }
+
 }
