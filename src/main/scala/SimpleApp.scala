@@ -60,8 +60,8 @@ object SimpleApp {
     callDuration(cdrDS.filter(_.`type` == "international"))
 
   def onNetCallAverageDuration(cdrDS: Dataset[CDR]): Double = {
-    val onNetCalls = cdrDS.filter(_.`type` == "on-net").map(_.duration)
-    onNetCalls.reduce(_+_) / onNetCalls.count()
+    val onNetCalls = cdrDS.filter(_.`type` == "on-net")
+    onNetCalls.map(_.duration).reduce(_+_) / onNetCalls.count()
   }
 
   def lessThan10minCallCount(cdrDS: Dataset[CDR]): Long =
