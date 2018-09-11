@@ -97,13 +97,13 @@ class SimpleAppSpec
     it("should correctly compute the on-net call average duration") {
 
       val cdrDS = Seq(
-        CDR("A3245", "callee_id1", "cell_id1", 0.9, "on-net", 0),
+        CDR("A3245", "callee_id1", "cell_id1", 0.7, "on-net", 0),
         CDR("A3245", "callee_id1", "cell_id1", 1.2, "international", 0),
         CDR("A3245", "callee_id1", "cell_id1", 1.2, "off-net", 0),
         CDR("A3245", "callee_id1", "cell_id1", 2.3, "on-net", 0),
         CDR("A3241", "callee_id20", "cell_id2", 3.4, "on-net", 1)
       ).toDS()
-      assert(2.2 === SimpleApp.onNetCallAverageDuration(cdrDS))
+      assert(Map("A3241" -> 3.4, "A3245" -> 1.5) === SimpleApp.onNetCallAverageDurationPerCaller(cdrDS))
     }
 
   }
