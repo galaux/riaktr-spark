@@ -119,7 +119,7 @@ class SimpleAppSpec
         CDR("A3245", "callee_id1", "cell_id1", 20.3, "on-net", 0),
         CDR("A3241", "callee_id20", "cell_id2", 3.4, "on-net", 1)
       ).toDS()
-      assert(3 === SimpleApp.lessThan10minCallCount(cdrDS))
+      assert(Map("A3245" -> 2, "A3241" -> 1) === SimpleApp.lessThan10minCallCountPerCaller(cdrDS))
     }
 
   }

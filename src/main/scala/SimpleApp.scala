@@ -75,8 +75,13 @@ object SimpleApp {
       .map { case Row(caller_id: String, avg_duration: Double) => (caller_id, avg_duration) }
       .toMap
 
-  def lessThan10minCallCount(cdrDS: Dataset[CDR]): Long =
-    cdrDS.filter(_.duration <= 10.0).count()
+  def lessThan10minCallCountPerCaller(cdrDS: Dataset[CDR]): Map[String, Long] =
+    cdrDS.filter(_.duration <= 10.0)
+      .groupBy("caller_id")
+      .count()
+      .collect()
+      .map { e => (e.getAs[String](0), e.getAs[Long](1))}
+      .toMap
 
   def top3CalleeIds(cdrDS: Dataset[CDR]): Seq[String] =
     cdrDS.groupBy($"callee_id")
