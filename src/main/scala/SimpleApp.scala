@@ -51,11 +51,13 @@ object SimpleApp {
   def droppedCallCount(cdrDS: Dataset[CDR]): Long =
     cdrDS.filter(_.dropped > 0).count()
 
-  def totalCallDuration(cdrDS: Dataset[CDR]): Double =
+  private def callDuration(cdrDS: Dataset[CDR]): Double =
     cdrDS.map(_.duration).reduce(_ + _)
 
+  def totalCallDuration = callDuration _
+
   def internationalCallDuration(cdrDS: Dataset[CDR]): Double =
-    totalCallDuration(cdrDS.filter(_.`type` == "international"))
+    callDuration(cdrDS.filter(_.`type` == "international"))
 
   def onNetCallAverageDuration(cdrDS: Dataset[CDR]): Double = {
     val onNetCalls = cdrDS.filter(_.`type` == "on-net").map(_.duration)
