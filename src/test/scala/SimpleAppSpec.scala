@@ -54,7 +54,7 @@ class SimpleAppSpec
         CDR("A3241", "callee_id20", "cell_id2", 122.4, "type2", 1),
         CDR("A3241", "callee_id20", "cell_id2", 122.4, "type2", 1)
       ).toDS()
-      assert(3 === SimpleApp.droppedCallCount(inDF))
+      assert(Map("A3245" -> 1, "A3241" -> 2) === SimpleApp.droppedCallCountPerCaller(inDF))
     }
 
   }

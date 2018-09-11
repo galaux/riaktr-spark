@@ -1,5 +1,6 @@
 /* SimpleApp.scala */
-import org.apache.spark.sql.{DataFrame, Dataset, Row, SparkSession}
+import org.apache.spark.sql.functions._
+import org.apache.spark.sql.{Dataset, Row, SparkSession}
 
 
 object SimpleApp {
@@ -48,8 +49,13 @@ object SimpleApp {
   def distinctCalleeCount(cdrDS: Dataset[CDR]): Long =
     cdrDS.select("callee_id").distinct().count()
 
-  def droppedCallCount(cdrDS: Dataset[CDR]): Long =
-    cdrDS.filter(_.dropped > 0).count()
+  def droppedCallCountPerCaller(cdrDS: Dataset[CDR]): Map[String, Long] =
+    cdrDS.filter(_.dropped > 0)
+      .groupBy("caller_id")
+      .agg(count("dropped") as "dropped_count")
+      .collect()
+      .map { case Row(caller_id: String, dropped_count: Long) => (caller_id, dropped_count) }
+      .toMap
 
   private def callDuration(cdrDS: Dataset[CDR]): Double =
     cdrDS.map(_.duration).reduce(_ + _)
