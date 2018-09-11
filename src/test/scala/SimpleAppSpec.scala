@@ -65,9 +65,13 @@ class SimpleAppSpec
 
       val inDF = Seq(
         CDR("A3245", "callee_id1", "cell_id1", 1.2, "type1", 0),
-        CDR("A3241", "callee_id20", "cell_id2", 3.7, "type2", 1)
+        CDR("A3245", "callee_id1", "cell_id1", 3.2, "type1", 0),
+        CDR("A3241", "callee_id20", "cell_id2", 3.7, "type2", 1),
+        CDR("A3241", "callee_id20", "cell_id2", 2.7, "type2", 1),
+        CDR("A3241", "callee_id20", "cell_id2", 3.9, "type2", 1),
+        CDR("A3241", "callee_id20", "cell_id2", 3.1, "type2", 1)
       ).toDS()
-      assert(4.9 === SimpleApp.totalCallDuration(inDF))
+      assert(Map("A3245" -> 4.4, "A3241" -> 13.4) === SimpleApp.totalCallDurationPerCaller(inDF))
     }
 
   }
@@ -83,7 +87,7 @@ class SimpleAppSpec
         CDR("A3245", "callee_id1", "cell_id1", 2.3, "international", 0),
         CDR("A3241", "callee_id20", "cell_id2", 3.4, "international", 1)
       ).toDS()
-      assert(6.9 === SimpleApp.internationalCallDuration(inDF))
+      assert(Map("A3245" -> 3.5, "A3241" -> 3.4) === SimpleApp.internationalCallDurationPerCaller(inDF))
     }
 
   }

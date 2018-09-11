@@ -57,13 +57,15 @@ object SimpleApp {
       .map { case Row(caller_id: String, dropped_count: Long) => (caller_id, dropped_count) }
       .toMap
 
-  private def callDuration(cdrDS: Dataset[CDR]): Double =
-    cdrDS.map(_.duration).reduce(_ + _)
+  def totalCallDurationPerCaller(cdrDS: Dataset[CDR]): Map[String, Double] =
+    cdrDS.groupBy("caller_id")
+      .agg(sum("duration") as "total_duration")
+      .collect()
+      .map { case Row(caller_id: String, total_duration: Double) => (caller_id, total_duration) }
+      .toMap
 
-  def totalCallDuration = callDuration _
-
-  def internationalCallDuration(cdrDS: Dataset[CDR]): Double =
-    callDuration(cdrDS.filter(_.`type` == "international"))
+  def internationalCallDurationPerCaller(cdrDS: Dataset[CDR]): Map[String, Double] =
+    totalCallDurationPerCaller(cdrDS.filter(_.`type` == "international"))
 
   def onNetCallAverageDuration(cdrDS: Dataset[CDR]): Double = {
     val onNetCalls = cdrDS.filter(_.`type` == "on-net")
