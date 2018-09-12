@@ -28,7 +28,7 @@ class SimpleAppSpec
       assert(Map(
         "A3245" -> ("cell_id2", (2L, 441.6)),
         "A3241" -> ("cell_id30", (2L, 244.8))
-      ) === SimpleApp.mostUsedCellPerCaller(cdrDS))
+      ) === SimpleApp.mostUsedCellByDurationPerCaller(cdrDS))
     }
 
   }
