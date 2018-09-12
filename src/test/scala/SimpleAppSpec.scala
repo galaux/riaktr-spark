@@ -18,7 +18,7 @@ class SimpleAppSpec
       val cdrDS = Seq(
         CDR("A3245", "callee_id1", "cell_id1", 121.4, "type1", 0),
         CDR("A3245", "callee_id1", "cell_id2", 121.4, "type1", 0),
-        CDR("A3245", "callee_id1", "cell_id2", 121.4, "type1", 0),
+        CDR("A3245", "callee_id1", "cell_id2", 320.2, "type1", 0),
         CDR("A3245", "callee_id1", "cell_id3", 121.4, "type1", 0),
         CDR("A3245", "callee_id1", "cell_id3", 121.4, "type1", 0),
         CDR("A3245", "callee_id1", "cell_id3", 121.4, "type1", 0),
@@ -26,8 +26,8 @@ class SimpleAppSpec
         CDR("A3241", "callee_id20", "cell_id30", 122.4, "type2", 1)
       ).toDS()
       assert(Map(
-        "A3245" -> "cell_id3",
-        "A3241" -> "cell_id30"
+        "A3245" -> ("cell_id2", (2L, 441.6)),
+        "A3241" -> ("cell_id30", (2L, 244.8))
       ) === SimpleApp.mostUsedCellPerCaller(cdrDS))
     }
 

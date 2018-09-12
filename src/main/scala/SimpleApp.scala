@@ -35,37 +35,44 @@ object SimpleApp {
     spark.stop()
   }
 
-  def mostUsedCellPerCaller(cdrDS: Dataset[CDR]): Map[String, String] = {
+  def mostUsedCellPerCaller(cdrDS: Dataset[CDR]): Map[String, (String, (Long, Double))] = {
 
-    val cellUseCountAgg = new Aggregator[CDR, Map[String, Int], String] {
+    val cellStatsAggregator = new Aggregator[CDR, Map[String, (Long, Double)], (String, (Long, Double))] {
 
-      override def zero: Map[String, Int] = Map.empty
+      override def zero: Map[String, (Long, Double)] = Map.empty
 
-      override def reduce(cellUseCount: Map[String, Int], cdr: CDR): Map[String, Int] = {
-        val oldValue = cellUseCount.getOrElse(cdr.cell_id, 0)
-        cellUseCount.updated(cdr.cell_id, oldValue + 1)
+      override def reduce(cellStats: Map[String, (Long, Double)], cdr: CDR): Map[String, (Long, Double)] = {
+        val (prevUseCount: Long, prevDuration: Double) = cellStats.getOrElse(cdr.cell_id, (0L, 0.0))
+        cellStats.updated(cdr.cell_id, (prevUseCount + 1, prevDuration + cdr.duration))
       }
 
-      override def merge(cellUseCountA: Map[String, Int], cellUseCountB: Map[String, Int]): Map[String, Int] = {
+      override def merge(cellUseCountA: Map[String, (Long, Double)], cellUseCountB: Map[String, (Long, Double)]): Map[String, (Long, Double)] = {
         val allKeys = cellUseCountA.keys ++ cellUseCountB.keys
-        allKeys.map { key => (key, cellUseCountA.getOrElse(key, 0) + cellUseCountB.getOrElse(key, 0)) }.toMap
+        allKeys.map { key =>
+          val (prevUseCountA: Long, prevDurationA: Double) = cellUseCountA.getOrElse(key, (0L, 0.0))
+          val (prevUseCountB: Long, prevDurationB: Double) = cellUseCountB.getOrElse(key, (0L, 0.0))
+          val newStats = (prevUseCountA + prevUseCountB, prevDurationA + prevDurationB)
+          (key, newStats)
+        }.toMap
       }
 
-      override def finish(reduction: Map[String, Int]): String =
-        reduction.toSeq
-          .sortWith { case ((_, countA), (_, countB)) => countA > countB }
-          .headOption
-          .map { case (cell_id, _) => cell_id }
-          .get
+      override def finish(reduction: Map[String, (Long, Double)]): (String, (Long, Double)) =
+        reduction
+          .toSeq
+          // Define here the condition to select the "most used cell", duration or # of time used
+          // .sortWith { case ((_, (countA, _)), (_, (countB, _))) => countA > countB }
+          // TODO pass this ordering in the cellStatsAggregator to enable choosing
+          .sortWith { case ((_, (_, durationA)), (_, (_, durationB))) => durationA > durationB }
+          .head
 
-      override def bufferEncoder: Encoder[Map[String, Int]] = implicitly[Encoder[Map[String, Int]]]
+      override def bufferEncoder: Encoder[Map[String, (Long, Double)]] = implicitly[Encoder[Map[String, (Long, Double)]]]
 
-      override def outputEncoder: Encoder[String] = Encoders.STRING
+      override def outputEncoder: Encoder[(String, (Long, Double))] = implicitly[Encoder[(String, (Long, Double))]]
     }.toColumn
 
     cdrDS
       .groupByKey(_.caller_id)
-      .agg(cellUseCountAgg)
+      .agg(cellStatsAggregator)
       .collect().toMap
   }
 
