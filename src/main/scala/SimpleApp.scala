@@ -86,6 +86,19 @@ object SimpleApp {
   val mostUsedCellByUseCountPerCaller = mostUsedCellPerCaller(useCountOrdering) _
   val mostUsedCellByDurationPerCaller = mostUsedCellPerCaller(durationOrdering) _
 
+  def mostUsedCellCoordinates(cdrDS: Dataset[CDR], cellDS: Dataset[Cell]): Map[String, (String, Double, Double)] = {
+    val mostUsedCellDS = mostUsedCellByDurationPerCaller(cdrDS)
+      .mapValues(_._1)
+      .toList
+      .toDF("caller_id", "cell_id")
+    mostUsedCellDS
+      .join(cellDS, mostUsedCellDS("cell_id") === cellDS("cell_id"))
+      .collect()
+      .map { case Row(caller_id: String, cell_id: String, _: String, longitude: Double, latitude: Double) =>
+        (caller_id, (cell_id, longitude, latitude))
+      }.toMap
+  }
+
   def distinctCalleeCountPerCaller(cdrDS: Dataset[CDR]): Map[String, Long] =
     cdrDS.groupBy("caller_id")
       .agg(countDistinct("callee_id") as "callee_count")
@@ -118,8 +131,6 @@ object SimpleApp {
       .collect()
       .map { case Row(caller_id: String, avg_duration: Double) => (caller_id, avg_duration) }
       .toMap
-
-//  TODO the latitude and longitude of the most used cell
 
   def lessThan10minCallCountPerCaller(cdrDS: Dataset[CDR]): Map[String, Long] =
     cdrDS.filter(_.duration <= 10.0)

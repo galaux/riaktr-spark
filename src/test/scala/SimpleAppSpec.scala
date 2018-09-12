@@ -33,6 +33,33 @@ class SimpleAppSpec
 
   }
 
+  describe("mostUsedCellCoordinates") {
+
+    it("should correctly compute the most used cell with its coordinates") {
+
+      val cdrDS = Seq(
+        CDR("A3245", "callee_id1", "cell_id1", 121.4, "type1", 0),
+        CDR("A3245", "callee_id1", "cell_id2", 121.4, "type1", 0),
+        CDR("A3245", "callee_id1", "cell_id2", 320.2, "type1", 0),
+        CDR("A3245", "callee_id1", "cell_id3", 121.4, "type1", 0),
+        CDR("A3245", "callee_id1", "cell_id3", 121.4, "type1", 0),
+        CDR("A3245", "callee_id1", "cell_id3", 121.4, "type1", 0),
+        CDR("A3241", "callee_id20", "cell_id30", 122.4, "type2", 1),
+        CDR("A3241", "callee_id20", "cell_id30", 122.4, "type2", 1)
+      ).toDS()
+      val cellDS = Seq(
+        Cell("cell_id1", 4.392824951181683, 50.794954017278855),
+        Cell("cell_id2", 4.39383786825585, 50.79807518156911),
+        Cell("cell_id3", 4.40814532192845, 50.79519411424009),
+        Cell("cell_id30", 2.40814532192845, 50.79519411424009)
+      ).toDS()
+      assert(Map(
+        "A3245" -> ("cell_id2", 4.39383786825585, 50.79807518156911),
+        "A3241" -> ("cell_id30", 2.40814532192845, 50.79519411424009)
+      ) === SimpleApp.mostUsedCellCoordinates(cdrDS, cellDS))
+    }
+
+  }
   describe("distinctCalleeCount") {
 
     it("should detect duplicate callees") {
