@@ -21,14 +21,6 @@ object SimpleApp {
                  dropped: Int
                 )
 
-  object durationOrdering extends Ordering[(String, CellStats)] {
-    def compare(a:(String, CellStats), b: (String, CellStats)) = a._2._2 compare b._2._2
-  }
-
-  object useCountOrdering extends Ordering[(String, CellStats)] {
-    def compare(a:(String, CellStats), b: (String, CellStats)) = a._2._1 compare b._2._1
-  }
-
   def main(args: Array[String]) {
     // FIXME wrong file opened. This is a WIP
     val cdrDS = spark.read
@@ -43,9 +35,17 @@ object SimpleApp {
     spark.stop()
   }
 
+  object durationOrdering extends Ordering[(String, CellStats)] {
+    def compare(a:(String, CellStats), b: (String, CellStats)) = a._2._2 compare b._2._2
+  }
+
+  object useCountOrdering extends Ordering[(String, CellStats)] {
+    def compare(a:(String, CellStats), b: (String, CellStats)) = a._2._1 compare b._2._1
+  }
+
   type CellStats = (Long, Double)
 
-  class CellStatsAggregator(ordering: Ordering[(String, CellStats)])
+  private class CellStatsAggregator(ordering: Ordering[(String, CellStats)])
     extends Aggregator[CDR, Map[String, CellStats], (String, CellStats)] {
 
     override def zero: Map[String, CellStats] = Map.empty
