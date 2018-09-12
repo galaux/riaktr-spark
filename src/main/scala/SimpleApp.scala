@@ -21,12 +21,12 @@ object SimpleApp {
                  dropped: Int
                 )
 
-  object durationOrdering extends Ordering[(String, (Long, Double))] {
-    def compare(a:(String, (Long, Double)), b: (String, (Long, Double))) = a._2._2 compare b._2._2
+  object durationOrdering extends Ordering[(String, CellStats)] {
+    def compare(a:(String, CellStats), b: (String, CellStats)) = a._2._2 compare b._2._2
   }
 
-  object useCountOrdering extends Ordering[(String, (Long, Double))] {
-    def compare(a:(String, (Long, Double)), b: (String, (Long, Double))) = a._2._1 compare b._2._1
+  object useCountOrdering extends Ordering[(String, CellStats)] {
+    def compare(a:(String, CellStats), b: (String, CellStats)) = a._2._1 compare b._2._1
   }
 
   def main(args: Array[String]) {
@@ -43,17 +43,19 @@ object SimpleApp {
     spark.stop()
   }
 
-  class CellStatsAggregator(ordering: Ordering[(String, (Long, Double))])
-    extends Aggregator[CDR, Map[String, (Long, Double)], (String, (Long, Double))] {
+  type CellStats = (Long, Double)
 
-    override def zero: Map[String, (Long, Double)] = Map.empty
+  class CellStatsAggregator(ordering: Ordering[(String, CellStats)])
+    extends Aggregator[CDR, Map[String, CellStats], (String, CellStats)] {
 
-    override def reduce(cellStats: Map[String, (Long, Double)], cdr: CDR): Map[String, (Long, Double)] = {
+    override def zero: Map[String, CellStats] = Map.empty
+
+    override def reduce(cellStats: Map[String, CellStats], cdr: CDR): Map[String, CellStats] = {
       val (prevUseCount: Long, prevDuration: Double) = cellStats.getOrElse(cdr.cell_id, (0L, 0.0))
       cellStats.updated(cdr.cell_id, (prevUseCount + 1, prevDuration + cdr.duration))
     }
 
-    override def merge(cellUseCountA: Map[String, (Long, Double)], cellUseCountB: Map[String, (Long, Double)]): Map[String, (Long, Double)] = {
+    override def merge(cellUseCountA: Map[String, CellStats], cellUseCountB: Map[String, CellStats]): Map[String, CellStats] = {
       val allKeys = cellUseCountA.keys ++ cellUseCountB.keys
       allKeys.map { key =>
         val (prevUseCountA: Long, prevDurationA: Double) = cellUseCountA.getOrElse(key, (0L, 0.0))
@@ -63,19 +65,19 @@ object SimpleApp {
       }.toMap
     }
 
-    override def finish(reduction: Map[String, (Long, Double)]): (String, (Long, Double)) =
+    override def finish(reduction: Map[String, CellStats]): (String, CellStats) =
       reduction
         .toSeq
         .sorted(ordering)
         .reverse
         .head
 
-    override def bufferEncoder: Encoder[Map[String, (Long, Double)]] = implicitly[Encoder[Map[String, (Long, Double)]]]
+    override def bufferEncoder: Encoder[Map[String, CellStats]] = implicitly[Encoder[Map[String, CellStats]]]
 
-    override def outputEncoder: Encoder[(String, (Long, Double))] = implicitly[Encoder[(String, (Long, Double))]]
+    override def outputEncoder: Encoder[(String, CellStats)] = implicitly[Encoder[(String, CellStats)]]
   }
 
-  private def mostUsedCellPerCaller(ordering: Ordering[(String, (Long, Double))])(cdrDS: Dataset[CDR]): Map[String, (String, (Long, Double))] =
+  private def mostUsedCellPerCaller(ordering: Ordering[(String, CellStats)])(cdrDS: Dataset[CDR]): Map[String, (String, CellStats)] =
     cdrDS
       .groupByKey(_.caller_id)
       .agg(new CellStatsAggregator(ordering).toColumn)
