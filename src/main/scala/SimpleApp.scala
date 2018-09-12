@@ -22,15 +22,75 @@ object SimpleApp {
                 )
 
   def main(args: Array[String]) {
-    // FIXME wrong file opened. This is a WIP
+    // TODO load the cellDS and apply a distinct on cell_id
     val cdrDS = spark.read
       .option("header", "true")
-      .csv("/enc/home/miguel/documents/it/spark/riaktr/src/test/resources/cells.csv")
+      .schema(Encoders.product[CDR].schema)
+      .csv("/enc/home/miguel/documents/it/spark/riaktr/src/test/resources/cdrs.csv") // TODO take path from args
       .as[CDR]
-    println(
-      s"""- Most used cell:\t\t${mostUsedCellByDurationPerCaller(cdrDS)}
-         |- Dictinct callee count:\t
-       """.stripMargin)
+
+    val cellDS = spark.read
+      .option("header", "true")
+      .schema(Encoders.product[Cell].schema)
+      .csv("/enc/home/miguel/documents/it/spark/riaktr/src/test/resources/cells.csv") // TODO take path from args
+      .as[Cell]
+
+    // TODO write output to file instead of printing it to stdout
+    val resultStr =
+      s"""Most used cell
+         |==============
+         |
+         |${mostUsedCellByDurationPerCaller(cdrDS)}
+         |
+         |
+         |MostUsedCellByUseCountPerCaller
+         |===============================
+         |
+         |TODO
+         |
+         |
+         |Number of distinct callees
+         |==========================
+         |
+         |distinctCalleeCountPerCaller
+         |
+         |
+         |Number of dropped calls
+         |=======================
+         |
+         |droppedCallCountPerCaller
+         |
+         |
+         |Total duration of the calls
+         |===========================
+         |
+         |totalCallDurationPerCaller
+         |
+         |
+         |Total duration of the international calls
+         |=========================================
+         |
+         |internationalCallDurationPerCaller
+         |
+         |
+         |Average duration of the on-net calls
+         |====================================
+         |
+         |onNetCallAverageDurationPerCaller
+         |
+         |
+         |Number of calls that lasted less than 10 minutes (included)
+         |===========================================================
+         |
+         |lessThan10minCallCountPerCaller
+         |
+         |
+         |Top-3 callee ids
+         |================
+         |
+         |top3CalleeIdsPerCaller
+       """.stripMargin
+    println(resultStr)
 
     spark.stop()
   }
