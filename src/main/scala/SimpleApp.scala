@@ -131,27 +131,27 @@ object SimpleApp {
 
   def top3CalleeIdsPerCaller(cdrDS: Dataset[CDR]): Map[String, Seq[String]] = {
 
-    val top3CalleeIdsAgg = new Aggregator[CDR, Map[String, Int], Seq[String]] {
+    val top3CalleeIdsAgg = new Aggregator[CDR, Map[String, Long], Seq[String]] {
 
-      override def zero: Map[String, Int] = Map.empty
+      override def zero: Map[String, Long] = Map.empty
 
-      override def reduce(calleeCallCount: Map[String, Int], cdr: CDR): Map[String, Int] = {
-        val oldValue = calleeCallCount.getOrElse(cdr.callee_id, 0)
+      override def reduce(calleeCallCount: Map[String, Long], cdr: CDR): Map[String, Long] = {
+        val oldValue = calleeCallCount.getOrElse(cdr.callee_id, 0L)
         calleeCallCount.updated(cdr.callee_id, oldValue + 1)
       }
 
-      override def merge(calleeCallCountA: Map[String, Int], calleeCallCountB: Map[String, Int]): Map[String, Int] = {
+      override def merge(calleeCallCountA: Map[String, Long], calleeCallCountB: Map[String, Long]): Map[String, Long] = {
         val allKeys = calleeCallCountA.keys ++ calleeCallCountB.keys
-        allKeys.map { key => (key, calleeCallCountA.getOrElse(key, 0) + calleeCallCountB.getOrElse(key, 0)) }.toMap
+        allKeys.map { key => (key, calleeCallCountA.getOrElse(key, 0L) + calleeCallCountB.getOrElse(key, 0L)) }.toMap
       }
 
-      override def finish(reduction: Map[String, Int]): Seq[String] =
+      override def finish(reduction: Map[String, Long]): Seq[String] =
         reduction.toSeq
           .sortWith { case ((_, countA), (_, countB)) => countA > countB }
           .take(3)
           .map { case (callee_id, _) => callee_id }
 
-      override def bufferEncoder: Encoder[Map[String, Int]] = implicitly[Encoder[Map[String, Int]]]
+      override def bufferEncoder: Encoder[Map[String, Long]] = implicitly[Encoder[Map[String, Long]]]
 
       override def outputEncoder: Encoder[Seq[String]] = implicitly[Encoder[Seq[String]]]
     }.toColumn
