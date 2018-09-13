@@ -247,9 +247,15 @@ object SimpleApp {
   }
 
 
-  case class OutAccumulator(calleeCount: Int, ssecond: Map[String, Long])
-//  type ElementCounter = Map[String, Long]
-  case class Accumulator(calleeCount: Map[String, Long], ssecond: Map[String, Long])
+  case class Accumulator(
+                          calleeCount: Map[String, Long],
+                          ssecond: Map[String, Long]
+                        )
+  case class OutAccumulator(
+                             distinctCalleeCount: Int,
+                             top3Callees: Seq[String],
+                             ssecond: Map[String, Long]
+                           )
 
   def allInOne(cdrDS: Dataset[CDR]): Dataset[(String, OutAccumulator)] = {
 
@@ -273,8 +279,9 @@ object SimpleApp {
       }
 
       def finish(reduction: Accumulator): OutAccumulator = {
-        val res = reduction.calleeCount.size
-        OutAccumulator(res, Map.empty)
+        val distinctCalleeCount = reduction.calleeCount.size
+        val top3Callees = reduction.calleeCount.toSeq.sortBy(_._2).map(_._1).reverse.take(3)
+        OutAccumulator(distinctCalleeCount, top3Callees, Map.empty)
       }
 
       override def bufferEncoder: Encoder[Accumulator] = implicitly[Encoder[Accumulator]]
