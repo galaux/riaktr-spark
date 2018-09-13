@@ -184,7 +184,7 @@ object SimpleApp {
         sum("lasts_less_than_10_min") as "less_than_10_min_call_count")
 
 
-  def top3CalleeIdsPerCaller(cdrDS: Dataset[CDR]): Map[String, Seq[String]] = {
+  def top3CalleeIdsPerCaller(cdrDS: Dataset[CDR]): Dataset[(String, Seq[String])] = {
 
     val top3CalleeIdsAgg = new Aggregator[CDR, Map[String, Long], Seq[String]] {
 
@@ -214,7 +214,6 @@ object SimpleApp {
     cdrDS
       .groupByKey(_.caller_id)
       .agg(top3CalleeIdsAgg)
-      .collect().toMap
   }
 
 }

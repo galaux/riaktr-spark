@@ -197,7 +197,7 @@ class SimpleAppSpec
         "fromB" -> Seq("toZ"),
         "fromC" -> Seq("toZ", "toY", "toX")
       )
-      assert(expected === SimpleApp.top3CalleeIdsPerCaller(cdrDS))
+      assert(expected === SimpleApp.top3CalleeIdsPerCaller(cdrDS).collect().toMap)
     }
 
   }
