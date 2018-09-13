@@ -249,25 +249,30 @@ object SimpleApp {
 
   case class Accumulator(
                           calleeCount: Map[String, Long],
-                          droppedCallsCount: Long
+                          droppedCallsCount: Long,
+                          totalCallDuration: Double
                         )
   case class OutAccumulator(
                              distinctCalleeCount: Int,
                              top3Callees: Seq[String],
-                             droppedCallsCount: Long
+                             droppedCallsCount: Long,
+                             totalCallDuration: Double
                            )
 
   def allInOne(cdrDS: Dataset[CDR]): Dataset[(String, OutAccumulator)] = {
 
     val customAggregator = new Aggregator[CDR, Accumulator, OutAccumulator] {
 
-      override def zero: Accumulator = Accumulator(Map.empty, 0L)
+      override def zero: Accumulator = Accumulator(Map.empty, 0L, 0.0)
 
       def reduce(accumulator: Accumulator, cdr: CDR): Accumulator = {
         val calleesAcc = accumulator.calleeCount
         val oldValue = calleesAcc.getOrElse(cdr.callee_id, 0L)
         val newCalleesAcc = calleesAcc.updated(cdr.callee_id, oldValue + 1)
-        Accumulator(newCalleesAcc, accumulator.droppedCallsCount + cdr.dropped)
+        Accumulator(
+          newCalleesAcc,
+          accumulator.droppedCallsCount + cdr.dropped,
+          accumulator.totalCallDuration + cdr.duration)
       }
 
       def merge(acc1: Accumulator, acc2: Accumulator): Accumulator = {
@@ -275,13 +280,20 @@ object SimpleApp {
         val calleesAcc2 = acc2.calleeCount
         val allKeys = calleesAcc1.keys ++ calleesAcc2.keys
         val newCalleesAcc = allKeys.map { key => (key, calleesAcc1.getOrElse(key, 0L) + calleesAcc2.getOrElse(key, 0L)) }.toMap
-        Accumulator(newCalleesAcc, acc1.droppedCallsCount + acc2.droppedCallsCount)
+        Accumulator(
+          newCalleesAcc,
+          acc1.droppedCallsCount + acc2.droppedCallsCount,
+          acc1.totalCallDuration + acc2.totalCallDuration)
       }
 
       def finish(reduction: Accumulator): OutAccumulator = {
         val distinctCalleeCount = reduction.calleeCount.size
         val top3Callees = reduction.calleeCount.toSeq.sortBy(_._2).map(_._1).reverse.take(3)
-        OutAccumulator(distinctCalleeCount, top3Callees, reduction.droppedCallsCount)
+        OutAccumulator(
+          distinctCalleeCount,
+          top3Callees,
+          reduction.droppedCallsCount,
+          reduction.totalCallDuration)
       }
 
       override def bufferEncoder: Encoder[Accumulator] = implicitly[Encoder[Accumulator]]

@@ -79,4 +79,22 @@ class SimpleAppSpec2
 
     }
 
+    describe("totalCallDuration") {
+
+      it("should correctly compute the total call duration") {
+
+        val cdrDS = Seq(
+          CDR("A3245", "callee_id1", "cell_id1", 1.2, "type1", 0),
+          CDR("A3245", "callee_id1", "cell_id1", 3.2, "type1", 0),
+          CDR("A3241", "callee_id20", "cell_id2", 3.7, "type2", 1),
+          CDR("A3241", "callee_id20", "cell_id2", 2.7, "type2", 1),
+          CDR("A3241", "callee_id20", "cell_id2", 3.9, "type2", 1),
+          CDR("A3241", "callee_id20", "cell_id2", 3.1, "type2", 1)
+        ).toDS()
+        val result = SimpleApp.allInOne(cdrDS)
+        assert(Map("A3245" -> 4.4, "A3241" -> 13.4) === result.collect().toMap.mapValues(_.totalCallDuration))
+      }
+
+    }
+
 }
