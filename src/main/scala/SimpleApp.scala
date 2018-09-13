@@ -251,34 +251,55 @@ object SimpleApp {
                           calleeCount: Map[String, Long],
                           droppedCallsCount: Long,
                           totalCallDuration: Double,
-                          internationalCallDuration: Double
+                          internationalCallDuration: Double,
+                          onNetCallDuration: Double,
+                          onNetCallCount: Long
                         )
   case class OutAccumulator(
                              distinctCalleeCount: Int,
                              top3Callees: Seq[String],
                              droppedCallsCount: Long,
                              totalCallDuration: Double,
-                             internationalCallDuration: Double
+                             internationalCallDuration: Double,
+                             onNetCallAverage: Double
                            )
 
   def allInOne(cdrDS: Dataset[CDR]): Dataset[(String, OutAccumulator)] = {
 
     val customAggregator = new Aggregator[CDR, Accumulator, OutAccumulator] {
 
-      override def zero: Accumulator = Accumulator(Map.empty, 0L, 0.0, 0.0)
+      override def zero: Accumulator = Accumulator(Map.empty, 0L, 0.0, 0.0, 0.0, 0L)
 
       def reduce(acc: Accumulator, cdr: CDR): Accumulator = {
         val calleesAcc = acc.calleeCount
         val oldValue = calleesAcc.getOrElse(cdr.callee_id, 0L)
         val newCalleesAcc = calleesAcc.updated(cdr.callee_id, oldValue + 1)
+
+        val internationalCallDuration =
+          if (cdr.`type` == "international")
+            acc.internationalCallDuration + cdr.duration
+          else
+            acc.internationalCallDuration
+
+        val onNetCallDuration =
+          if (cdr.`type` == "on-net")
+            acc.onNetCallDuration + cdr.duration
+          else
+            acc.onNetCallDuration
+
+        val onNetCallCount =
+          if (cdr.`type` == "on-net")
+            acc.onNetCallCount + 1
+          else
+            acc.onNetCallCount
+
         Accumulator(
           newCalleesAcc,
           acc.droppedCallsCount + cdr.dropped,
           acc.totalCallDuration + cdr.duration,
-          if (cdr.`type` == "international")
-            acc.internationalCallDuration + cdr.duration
-          else
-            acc.internationalCallDuration)
+          internationalCallDuration,
+          onNetCallDuration,
+          onNetCallCount)
       }
 
       def merge(acc1: Accumulator, acc2: Accumulator): Accumulator = {
@@ -290,7 +311,9 @@ object SimpleApp {
           newCalleesAcc,
           acc1.droppedCallsCount + acc2.droppedCallsCount,
           acc1.totalCallDuration + acc2.totalCallDuration,
-          acc1.internationalCallDuration + acc2.internationalCallDuration)
+          acc1.internationalCallDuration + acc2.internationalCallDuration,
+          acc1.onNetCallDuration + acc2.onNetCallDuration,
+          acc1.onNetCallCount + acc2.onNetCallCount)
       }
 
       def finish(reduction: Accumulator): OutAccumulator = {
@@ -301,7 +324,8 @@ object SimpleApp {
           top3Callees,
           reduction.droppedCallsCount,
           reduction.totalCallDuration,
-          reduction.internationalCallDuration)
+          reduction.internationalCallDuration,
+          reduction.onNetCallDuration / reduction.onNetCallCount)
       }
 
       override def bufferEncoder: Encoder[Accumulator] = implicitly[Encoder[Accumulator]]
