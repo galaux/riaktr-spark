@@ -18,8 +18,15 @@ object SimpleApp {
                  cell_id: String,
                  duration: Double,
                  `type`: String,
-                 dropped: Int
-                )
+                 dropped: Int)
+  case class ExtendedCDR(caller_id: String,
+                         callee_id: String,
+                         cell_id: String,
+                         longitude: Double,
+                         latitude: Double,
+                         duration: Double,
+                         `type`: String,
+                         dropped: Int)
 
   def main(args: Array[String]) {
     // TODO load the cellDS and apply a distinct on cell_id
@@ -40,7 +47,7 @@ object SimpleApp {
       s"""Most used cell
          |==============
          |
-         |${mostUsedCellByDurationPerCaller(cdrDS)}
+         |${mostUsedCellByDurationPerCaller(cdrDS, cellDS)}
          |
          |
          |MostUsedCellByUseCountPerCaller
@@ -95,28 +102,31 @@ object SimpleApp {
     spark.stop()
   }
 
-  object durationOrdering extends Ordering[(String, CellStats)] {
-    def compare(a:(String, CellStats), b: (String, CellStats)) = a._2.totalDuration compare b._2.totalDuration
+  object durationOrdering extends Ordering[(CellId, CellStats)] {
+    def compare(a:(CellId, CellStats), b: (CellId, CellStats)) = a._2.totalDuration compare b._2.totalDuration
   }
 
-  object useCountOrdering extends Ordering[(String, CellStats)] {
-    def compare(a:(String, CellStats), b: (String, CellStats)) = a._2.useCount compare b._2.useCount
+  object useCountOrdering extends Ordering[(CellId, CellStats)] {
+    def compare(a:(CellId, CellStats), b: (CellId, CellStats)) = a._2.useCount compare b._2.useCount
   }
 
   case class CellStats(useCount: Long = 0L, totalDuration: Double = 0.0)
 
-  private class CellStatsAggregator(ordering: Ordering[(String, CellStats)])
-    extends Aggregator[CDR, Map[String, CellStats], (String, CellStats)] {
+  case class CellId(id: String, longitude: Double, latitude: Double)
 
-    override def zero: Map[String, CellStats] = Map.empty
+  private class CellStatsAggregator(ordering: Ordering[(CellId, CellStats)])
+    extends Aggregator[ExtendedCDR, Map[CellId, CellStats], (CellId, CellStats)] {
 
-    override def reduce(cellStatsList: Map[String, CellStats], cdr: CDR): Map[String, CellStats] = {
-      val prevCellStats = cellStatsList.getOrElse(cdr.cell_id, CellStats())
+    override def zero: Map[CellId, CellStats] = Map.empty
+
+    override def reduce(cellStatsList: Map[CellId, CellStats], cdr: ExtendedCDR): Map[CellId, CellStats] = {
+      val cellId = CellId(cdr.cell_id, cdr.longitude, cdr.latitude)
+      val prevCellStats = cellStatsList.getOrElse(cellId, CellStats())
       val newCellStats = CellStats(prevCellStats.useCount + 1, prevCellStats.totalDuration + cdr.duration)
-      cellStatsList.updated(cdr.cell_id, newCellStats)
+      cellStatsList.updated(cellId, newCellStats)
     }
 
-    override def merge(cellUseCountA: Map[String, CellStats], cellUseCountB: Map[String, CellStats]): Map[String, CellStats] = {
+    override def merge(cellUseCountA: Map[CellId, CellStats], cellUseCountB: Map[CellId, CellStats]): Map[CellId, CellStats] = {
       val allKeys = cellUseCountA.keys ++ cellUseCountB.keys
       allKeys.map { key =>
         val cellStatsA = cellUseCountA.getOrElse(key, CellStats())
@@ -126,20 +136,21 @@ object SimpleApp {
       }.toMap
     }
 
-    override def finish(reduction: Map[String, CellStats]): (String, CellStats) =
+    override def finish(reduction: Map[CellId, CellStats]): (CellId, CellStats) =
       reduction
         .toSeq
         .sorted(ordering)
         .reverse
         .head
 
-    override def bufferEncoder: Encoder[Map[String, CellStats]] = implicitly[Encoder[Map[String, CellStats]]]
+    override def bufferEncoder: Encoder[Map[CellId, CellStats]] = implicitly[Encoder[Map[CellId, CellStats]]]
 
-    override def outputEncoder: Encoder[(String, CellStats)] = implicitly[Encoder[(String, CellStats)]]
+    override def outputEncoder: Encoder[(CellId, CellStats)] = implicitly[Encoder[(CellId, CellStats)]]
   }
 
-  private def mostUsedCellPerCaller(ordering: Ordering[(String, CellStats)])(cdrDS: Dataset[CDR]): Dataset[(String, (String, CellStats))] =
-    cdrDS
+  private def mostUsedCellPerCaller(ordering: Ordering[(CellId, CellStats)])(cdrDS: Dataset[CDR], cellDS: Dataset[Cell]): Dataset[(String, (CellId, CellStats))] =
+    cdrDS.join(cellDS, "cell_id")
+      .as[ExtendedCDR]
       .groupByKey(_.caller_id)
       .agg(new CellStatsAggregator(ordering).toColumn)
 

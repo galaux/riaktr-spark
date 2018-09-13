@@ -1,4 +1,4 @@
-import SimpleApp.{CDR, Cell, CellStats}
+import SimpleApp.{CDR, Cell, CellId, CellStats}
 import com.holdenkarau.spark.testing.{DatasetSuiteBase, RDDComparisons}
 import org.apache.spark.sql.{DataFrame, Dataset, Row}
 import org.scalactic.TolerantNumerics
@@ -32,39 +32,19 @@ class SimpleAppSpec
         CDR("A3241", "callee_id20", "cell_id30", 122.4, "type2", 1),
         CDR("A3241", "callee_id20", "cell_id30", 122.4, "type2", 1)
       ).toDS()
-      val expected = Map(
-        "A3245" -> ("cell_id2", CellStats(2L, 441.6)),
-        "A3241" -> ("cell_id30", CellStats(2L, 244.8)))
-      val actual = SimpleApp.mostUsedCellByDurationPerCaller(cdrDS).collect().toMap
-      assert(expected === actual)
-    }
 
-  }
-
-  describe("mostUsedCellCoordinates") {
-
-    it("should correctly compute the most used cell with its coordinates") {
-
-      val cdrDS = Seq(
-        CDR("A3245", "callee_id1", "cell_id1", 121.4, "type1", 0),
-        CDR("A3245", "callee_id1", "cell_id2", 121.4, "type1", 0),
-        CDR("A3245", "callee_id1", "cell_id2", 320.2, "type1", 0),
-        CDR("A3245", "callee_id1", "cell_id3", 121.4, "type1", 0),
-        CDR("A3245", "callee_id1", "cell_id3", 121.4, "type1", 0),
-        CDR("A3245", "callee_id1", "cell_id3", 121.4, "type1", 0),
-        CDR("A3241", "callee_id20", "cell_id30", 122.4, "type2", 1),
-        CDR("A3241", "callee_id20", "cell_id30", 122.4, "type2", 1)
-      ).toDS()
       val cellDS = Seq(
         Cell("cell_id1", 4.392824951181683, 50.794954017278855),
         Cell("cell_id2", 4.39383786825585, 50.79807518156911),
         Cell("cell_id3", 4.40814532192845, 50.79519411424009),
         Cell("cell_id30", 2.40814532192845, 50.79519411424009)
       ).toDS()
-      assert(Map(
-        "A3245" -> ("cell_id2", 4.39383786825585, 50.79807518156911),
-        "A3241" -> ("cell_id30", 2.40814532192845, 50.79519411424009)
-      ) === SimpleApp.mostUsedCellCoordinates(cdrDS, cellDS))
+
+      val expected = Map(
+        "A3245" -> (CellId("cell_id2", 4.39383786825585, 50.79807518156911), CellStats(2L, 441.6)),
+        "A3241" -> (CellId("cell_id30", 2.40814532192845, 50.79519411424009), CellStats(2L, 244.8)))
+      val actual = SimpleApp.mostUsedCellByDurationPerCaller(cdrDS, cellDS).collect().toMap
+      assert(expected === actual)
     }
 
   }
