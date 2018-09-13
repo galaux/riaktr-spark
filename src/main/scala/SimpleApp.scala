@@ -96,31 +96,32 @@ object SimpleApp {
   }
 
   object durationOrdering extends Ordering[(String, CellStats)] {
-    def compare(a:(String, CellStats), b: (String, CellStats)) = a._2._2 compare b._2._2
+    def compare(a:(String, CellStats), b: (String, CellStats)) = a._2.totalDuration compare b._2.totalDuration
   }
 
   object useCountOrdering extends Ordering[(String, CellStats)] {
-    def compare(a:(String, CellStats), b: (String, CellStats)) = a._2._1 compare b._2._1
+    def compare(a:(String, CellStats), b: (String, CellStats)) = a._2.useCount compare b._2.useCount
   }
 
-  type CellStats = (Long, Double)
+  case class CellStats(useCount: Long = 0L, totalDuration: Double = 0.0)
 
   private class CellStatsAggregator(ordering: Ordering[(String, CellStats)])
     extends Aggregator[CDR, Map[String, CellStats], (String, CellStats)] {
 
     override def zero: Map[String, CellStats] = Map.empty
 
-    override def reduce(cellStats: Map[String, CellStats], cdr: CDR): Map[String, CellStats] = {
-      val (prevUseCount: Long, prevDuration: Double) = cellStats.getOrElse(cdr.cell_id, (0L, 0.0))
-      cellStats.updated(cdr.cell_id, (prevUseCount + 1, prevDuration + cdr.duration))
+    override def reduce(cellStatsList: Map[String, CellStats], cdr: CDR): Map[String, CellStats] = {
+      val prevCellStats = cellStatsList.getOrElse(cdr.cell_id, CellStats())
+      val newCellStats = CellStats(prevCellStats.useCount + 1, prevCellStats.totalDuration + cdr.duration)
+      cellStatsList.updated(cdr.cell_id, newCellStats)
     }
 
     override def merge(cellUseCountA: Map[String, CellStats], cellUseCountB: Map[String, CellStats]): Map[String, CellStats] = {
       val allKeys = cellUseCountA.keys ++ cellUseCountB.keys
       allKeys.map { key =>
-        val (prevUseCountA: Long, prevDurationA: Double) = cellUseCountA.getOrElse(key, (0L, 0.0))
-        val (prevUseCountB: Long, prevDurationB: Double) = cellUseCountB.getOrElse(key, (0L, 0.0))
-        val newStats = (prevUseCountA + prevUseCountB, prevDurationA + prevDurationB)
+        val cellStatsA = cellUseCountA.getOrElse(key, CellStats())
+        val cellStatsB = cellUseCountB.getOrElse(key, CellStats())
+        val newStats = CellStats(cellStatsA.useCount + cellStatsB.useCount, cellStatsA.totalDuration + cellStatsB.totalDuration)
         (key, newStats)
       }.toMap
     }
