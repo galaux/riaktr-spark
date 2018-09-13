@@ -249,25 +249,25 @@ object SimpleApp {
 
   case class Accumulator(
                           calleeCount: Map[String, Long],
-                          ssecond: Map[String, Long]
+                          droppedCallsCount: Long
                         )
   case class OutAccumulator(
                              distinctCalleeCount: Int,
                              top3Callees: Seq[String],
-                             ssecond: Map[String, Long]
+                             droppedCallsCount: Long
                            )
 
   def allInOne(cdrDS: Dataset[CDR]): Dataset[(String, OutAccumulator)] = {
 
     val customAggregator = new Aggregator[CDR, Accumulator, OutAccumulator] {
 
-      override def zero: Accumulator = Accumulator(Map.empty, Map.empty)
+      override def zero: Accumulator = Accumulator(Map.empty, 0L)
 
       def reduce(accumulator: Accumulator, cdr: CDR): Accumulator = {
         val calleesAcc = accumulator.calleeCount
         val oldValue = calleesAcc.getOrElse(cdr.callee_id, 0L)
         val newCalleesAcc = calleesAcc.updated(cdr.callee_id, oldValue + 1)
-        Accumulator(newCalleesAcc, Map.empty)
+        Accumulator(newCalleesAcc, accumulator.droppedCallsCount + cdr.dropped)
       }
 
       def merge(acc1: Accumulator, acc2: Accumulator): Accumulator = {
@@ -275,13 +275,13 @@ object SimpleApp {
         val calleesAcc2 = acc2.calleeCount
         val allKeys = calleesAcc1.keys ++ calleesAcc2.keys
         val newCalleesAcc = allKeys.map { key => (key, calleesAcc1.getOrElse(key, 0L) + calleesAcc2.getOrElse(key, 0L)) }.toMap
-        Accumulator(newCalleesAcc, Map.empty)
+        Accumulator(newCalleesAcc, acc1.droppedCallsCount + acc2.droppedCallsCount)
       }
 
       def finish(reduction: Accumulator): OutAccumulator = {
         val distinctCalleeCount = reduction.calleeCount.size
         val top3Callees = reduction.calleeCount.toSeq.sortBy(_._2).map(_._1).reverse.take(3)
-        OutAccumulator(distinctCalleeCount, top3Callees, Map.empty)
+        OutAccumulator(distinctCalleeCount, top3Callees, reduction.droppedCallsCount)
       }
 
       override def bufferEncoder: Encoder[Accumulator] = implicitly[Encoder[Accumulator]]

@@ -62,4 +62,21 @@ class SimpleAppSpec2
 
     }
 
+    describe("droppedCallCount") {
+
+      it("should correctly count dropped calls") {
+
+        val cdrDS = Seq(
+          CDR("A3245", "callee_id1", "cell_id1", 121.4, "type1", 0),
+          CDR("A3245", "callee_id1", "cell_id1", 121.4, "type1", 1),
+          CDR("A3245", "callee_id1", "cell_id1", 121.4, "type1", 0),
+          CDR("A3241", "callee_id20", "cell_id2", 122.4, "type2", 1),
+          CDR("A3241", "callee_id20", "cell_id2", 122.4, "type2", 1)
+        ).toDS()
+        val result = SimpleApp.allInOne(cdrDS)
+        assert(Map("A3245" -> 1, "A3241" -> 2) === result.collect().toMap.mapValues(_.droppedCallsCount))
+      }
+
+    }
+
 }
