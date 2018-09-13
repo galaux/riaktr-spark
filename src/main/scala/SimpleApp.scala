@@ -246,4 +246,44 @@ object SimpleApp {
       .collect().toMap
   }
 
+
+  case class OutAccumulator(calleeCount: Int, ssecond: Map[String, Long])
+//  type ElementCounter = Map[String, Long]
+  case class Accumulator(calleeCount: Map[String, Long], ssecond: Map[String, Long])
+
+  def allInOne(cdrDS: Dataset[CDR]): Dataset[(String, OutAccumulator)] = {
+
+    val customAggregator = new Aggregator[CDR, Accumulator, OutAccumulator] {
+
+      override def zero: Accumulator = Accumulator(Map.empty, Map.empty)
+
+      def reduce(accumulator: Accumulator, cdr: CDR): Accumulator = {
+        val calleesAcc = accumulator.calleeCount
+        val oldValue = calleesAcc.getOrElse(cdr.callee_id, 0L)
+        val newCalleesAcc = calleesAcc.updated(cdr.callee_id, oldValue + 1)
+        Accumulator(newCalleesAcc, Map.empty)
+      }
+
+      def merge(acc1: Accumulator, acc2: Accumulator): Accumulator = {
+        val calleesAcc1 = acc1.calleeCount
+        val calleesAcc2 = acc2.calleeCount
+        val allKeys = calleesAcc1.keys ++ calleesAcc2.keys
+        val newCalleesAcc = allKeys.map { key => (key, calleesAcc1.getOrElse(key, 0L) + calleesAcc2.getOrElse(key, 0L)) }.toMap
+        Accumulator(newCalleesAcc, Map.empty)
+      }
+
+      def finish(reduction: Accumulator): OutAccumulator = {
+        val res = reduction.calleeCount.size
+        OutAccumulator(res, Map.empty)
+      }
+
+      override def bufferEncoder: Encoder[Accumulator] = implicitly[Encoder[Accumulator]]
+
+      override def outputEncoder: Encoder[OutAccumulator] = implicitly[Encoder[OutAccumulator]]
+    }.toColumn
+
+    cdrDS
+      .groupByKey(_.caller_id)
+      .agg(customAggregator)
+  }
 }
