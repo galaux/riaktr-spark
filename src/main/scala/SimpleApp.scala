@@ -159,43 +159,56 @@ object SimpleApp {
       }.toMap
   }
 
-  def distinctCalleeCountPerCaller(cdrDS: Dataset[CDR]): Map[String, Long] =
-    cdrDS.groupBy("caller_id")
+  def expandColumns(cdrDS: Dataset[CDR]): Dataset[Row] =
+    cdrDS
+      .withColumn(
+        "international_duration",
+        when($"type" === "international", col("duration")))
+      .withColumn(
+        "on_net_duration",
+        when($"type" === "on-net", col("duration")))
+      .withColumn(
+        "lasts_less_than_10_min",
+        when($"duration" <= 10.0, 1).otherwise(0))
+
+  def distinctCalleeCountPerCaller(cdrByCaller: RelationalGroupedDataset): Map[String, Long] =
+    cdrByCaller
       .agg(countDistinct("callee_id") as "callee_count")
       .collect()
       .map { case Row(caller_id: String, callee_count: Long) => (caller_id, callee_count) }
       .toMap
 
-  def droppedCallCountPerCaller(cdrDS: Dataset[CDR]): Map[String, Long] =
-    cdrDS.filter(_.dropped > 0)
-      .groupBy("caller_id")
-      .agg(count("dropped") as "dropped_count")
+  def droppedCallCountPerCaller(cdrByCaller: RelationalGroupedDataset): Map[String, Long] =
+    cdrByCaller
+      .agg(sum("dropped") as "dropped_count")
       .collect()
       .map { case Row(caller_id: String, dropped_count: Long) => (caller_id, dropped_count) }
       .toMap
 
-  def totalCallDurationPerCaller(cdrDS: Dataset[CDR]): Map[String, Double] =
-    cdrDS.groupBy("caller_id")
+  def totalCallDurationPerCaller(cdrByCaller: RelationalGroupedDataset): Map[String, Double] =
+    cdrByCaller
       .agg(sum("duration") as "total_duration")
       .collect()
       .map { case Row(caller_id: String, total_duration: Double) => (caller_id, total_duration) }
       .toMap
 
-  def internationalCallDurationPerCaller(cdrDS: Dataset[CDR]): Map[String, Double] =
-    totalCallDurationPerCaller(cdrDS.filter(_.`type` == "international"))
+  def internationalCallDurationPerCaller(cdrByCaller: RelationalGroupedDataset): Map[String, Double] =
+    cdrByCaller
+      .agg(sum("international_duration") as "international_duration")
+      .collect()
+      .map { case Row(caller_id: String, total_duration: Double) => (caller_id, total_duration) }
+      .toMap
 
-  def onNetCallAverageDurationPerCaller(cdrDS: Dataset[CDR]): Map[String, Double] =
-    cdrDS.filter(_.`type` == "on-net")
-      .groupBy("caller_id")
-      .agg(avg("duration") as "avg_duration")
+  def onNetCallAverageDurationPerCaller(cdrByCaller: RelationalGroupedDataset): Map[String, Double] =
+    cdrByCaller
+      .agg(avg("on_net_duration") as "avg_duration")
       .collect()
       .map { case Row(caller_id: String, avg_duration: Double) => (caller_id, avg_duration) }
       .toMap
 
-  def lessThan10minCallCountPerCaller(cdrDS: Dataset[CDR]): Map[String, Long] =
-    cdrDS.filter(_.duration <= 10.0)
-      .groupBy("caller_id")
-      .count()
+  def lessThan10minCallCountPerCaller(cdrByCaller: RelationalGroupedDataset): Map[String, Long] =
+    cdrByCaller
+      .agg(sum("lasts_less_than_10_min") as "less_than_10_min_duration")
       .collect()
       .map { e => (e.getAs[String](0), e.getAs[Long](1))}
       .toMap

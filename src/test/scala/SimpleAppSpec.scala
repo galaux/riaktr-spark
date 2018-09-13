@@ -64,7 +64,7 @@ class SimpleAppSpec
 
     it("should detect duplicate callees") {
 
-      val inDF = Seq(
+      val cdrDS = Seq(
         CDR("A3245", "callee_id1", "cell_id1", 121.4, "type1", 0),
         CDR("A3245", "callee_id2", "cell_id1", 121.4, "type1", 0),
         CDR("A3245", "callee_id1", "cell_id1", 121.4, "type1", 0),
@@ -72,7 +72,8 @@ class SimpleAppSpec
         CDR("A3241", "callee_id21", "cell_id2", 122.4, "type2", 1),
         CDR("A3241", "callee_id22", "cell_id2", 122.4, "type2", 1)
       ).toDS()
-      assert(Map("A3245" -> 2, "A3241" -> 3) === SimpleApp.distinctCalleeCountPerCaller(inDF))
+      val cdrByCaller = SimpleApp.expandColumns(cdrDS).groupBy("caller_id")
+      assert(Map("A3245" -> 2, "A3241" -> 3) === SimpleApp.distinctCalleeCountPerCaller(cdrByCaller))
     }
 
   }
@@ -81,14 +82,15 @@ class SimpleAppSpec
 
     it("should correctly count dropped calls") {
 
-      val inDF = Seq(
+      val cdrDS = Seq(
         CDR("A3245", "callee_id1", "cell_id1", 121.4, "type1", 0),
         CDR("A3245", "callee_id1", "cell_id1", 121.4, "type1", 1),
         CDR("A3245", "callee_id1", "cell_id1", 121.4, "type1", 0),
         CDR("A3241", "callee_id20", "cell_id2", 122.4, "type2", 1),
         CDR("A3241", "callee_id20", "cell_id2", 122.4, "type2", 1)
       ).toDS()
-      assert(Map("A3245" -> 1, "A3241" -> 2) === SimpleApp.droppedCallCountPerCaller(inDF))
+      val cdrByCaller = SimpleApp.expandColumns(cdrDS).groupBy("caller_id")
+      assert(Map("A3245" -> 1, "A3241" -> 2) === SimpleApp.droppedCallCountPerCaller(cdrByCaller))
     }
 
   }
@@ -97,7 +99,7 @@ class SimpleAppSpec
 
     it("should correctly compute the total call duration") {
 
-      val inDF = Seq(
+      val cdrDS = Seq(
         CDR("A3245", "callee_id1", "cell_id1", 1.2, "type1", 0),
         CDR("A3245", "callee_id1", "cell_id1", 3.2, "type1", 0),
         CDR("A3241", "callee_id20", "cell_id2", 3.7, "type2", 1),
@@ -105,7 +107,8 @@ class SimpleAppSpec
         CDR("A3241", "callee_id20", "cell_id2", 3.9, "type2", 1),
         CDR("A3241", "callee_id20", "cell_id2", 3.1, "type2", 1)
       ).toDS()
-      assert(Map("A3245" -> 4.4, "A3241" -> 13.4) === SimpleApp.totalCallDurationPerCaller(inDF))
+      val cdrByCaller = SimpleApp.expandColumns(cdrDS).groupBy("caller_id")
+      assert(Map("A3245" -> 4.4, "A3241" -> 13.4) === SimpleApp.totalCallDurationPerCaller(cdrByCaller))
     }
 
   }
@@ -114,14 +117,15 @@ class SimpleAppSpec
 
     it("should correctly compute the international call duration") {
 
-      val inDF = Seq(
+      val cdrDS = Seq(
         CDR("A3245", "callee_id1", "cell_id1", 1.2, "on-net", 0),
         CDR("A3245", "callee_id1", "cell_id1", 1.2, "international", 0),
         CDR("A3245", "callee_id1", "cell_id1", 1.2, "off-net", 0),
         CDR("A3245", "callee_id1", "cell_id1", 2.3, "international", 0),
         CDR("A3241", "callee_id20", "cell_id2", 3.4, "international", 1)
       ).toDS()
-      assert(Map("A3245" -> 3.5, "A3241" -> 3.4) === SimpleApp.internationalCallDurationPerCaller(inDF))
+      val cdrByCaller = SimpleApp.expandColumns(cdrDS).groupBy("caller_id")
+      assert(Map("A3245" -> 3.5, "A3241" -> 3.4) === SimpleApp.internationalCallDurationPerCaller(cdrByCaller))
     }
 
   }
@@ -137,7 +141,8 @@ class SimpleAppSpec
         CDR("A3245", "callee_id1", "cell_id1", 2.3, "on-net", 0),
         CDR("A3241", "callee_id20", "cell_id2", 3.4, "on-net", 1)
       ).toDS()
-      assert(Map("A3241" -> 3.4, "A3245" -> 1.5) === SimpleApp.onNetCallAverageDurationPerCaller(cdrDS))
+      val cdrByCaller = SimpleApp.expandColumns(cdrDS).groupBy("caller_id")
+      assert(Map("A3241" -> 3.4, "A3245" -> 1.5) === SimpleApp.onNetCallAverageDurationPerCaller(cdrByCaller))
     }
 
   }
@@ -153,7 +158,8 @@ class SimpleAppSpec
         CDR("A3245", "callee_id1", "cell_id1", 20.3, "on-net", 0),
         CDR("A3241", "callee_id20", "cell_id2", 3.4, "on-net", 1)
       ).toDS()
-      assert(Map("A3245" -> 2, "A3241" -> 1) === SimpleApp.lessThan10minCallCountPerCaller(cdrDS))
+      val cdrByCaller = SimpleApp.expandColumns(cdrDS).groupBy("caller_id")
+      assert(Map("A3245" -> 2, "A3241" -> 1) === SimpleApp.lessThan10minCallCountPerCaller(cdrByCaller))
     }
 
   }
