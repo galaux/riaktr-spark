@@ -159,7 +159,8 @@ object SimpleApp {
       }.toMap
   }
 
-  def expandColumns(cdrDS: Dataset[CDR]): Dataset[Row] =
+
+  def expandColsForCommonMetrics(cdrDS: Dataset[CDR]): Dataset[Row] =
     cdrDS
       .withColumn(
         "international_duration",
@@ -171,8 +172,8 @@ object SimpleApp {
         "lasts_less_than_10_min",
         when($"duration" <= 10.0, 1).otherwise(0))
 
-  def mix(cdrDS: Dataset[CDR]): DataFrame =
-    expandColumns(cdrDS)
+  def commonMetrics(cdrDS: Dataset[CDR]): DataFrame =
+    expandColsForCommonMetrics(cdrDS)
       .groupBy("caller_id")
       .agg(
         countDistinct("callee_id") as "distinct_callee_count",
@@ -181,6 +182,7 @@ object SimpleApp {
         sum("international_duration") as "international_call_duration",
         avg("on_net_duration") as "avg_on_net_call_duration",
         sum("lasts_less_than_10_min") as "less_than_10_min_call_count")
+
 
   def top3CalleeIdsPerCaller(cdrDS: Dataset[CDR]): Map[String, Seq[String]] = {
 

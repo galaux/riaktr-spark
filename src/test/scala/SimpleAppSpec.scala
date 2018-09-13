@@ -12,7 +12,7 @@ class SimpleAppSpec
   import sqlContext.implicits._
   implicit val doubleEquality = TolerantNumerics.tolerantDoubleEquality(0.001)
 
-  def extractFromMix[T](df: DataFrame, fieldName: String): Map[String, T] =
+  def extractFromCommonMetrics[T](df: DataFrame, fieldName: String): Map[String, T] =
     df.collect()
       .map { row => (row.getAs[String]("caller_id"), row.getAs[T](fieldName)) }
       .toMap
@@ -80,7 +80,7 @@ class SimpleAppSpec
         CDR("A3241", "callee_id21", "cell_id2", 122.4, "type2", 1),
         CDR("A3241", "callee_id22", "cell_id2", 122.4, "type2", 1)
       ).toDS()
-      val actual = extractFromMix[Long](SimpleApp.mix(cdrDS), "distinct_callee_count")
+      val actual = extractFromCommonMetrics[Long](SimpleApp.commonMetrics(cdrDS), "distinct_callee_count")
       assert(Map("A3245" -> 2, "A3241" -> 3) === actual)
     }
 
@@ -97,7 +97,7 @@ class SimpleAppSpec
         CDR("A3241", "callee_id20", "cell_id2", 122.4, "type2", 1),
         CDR("A3241", "callee_id20", "cell_id2", 122.4, "type2", 1)
       ).toDS()
-      val actual = extractFromMix[Long](SimpleApp.mix(cdrDS), "dropped_call_count")
+      val actual = extractFromCommonMetrics[Long](SimpleApp.commonMetrics(cdrDS), "dropped_call_count")
       assert(Map("A3245" -> 1, "A3241" -> 2) === actual)
     }
 
@@ -115,7 +115,7 @@ class SimpleAppSpec
         CDR("A3241", "callee_id20", "cell_id2", 3.9, "type2", 1),
         CDR("A3241", "callee_id20", "cell_id2", 3.1, "type2", 1)
       ).toDS()
-      val actual = extractFromMix[Long](SimpleApp.mix(cdrDS), "total_call_duration")
+      val actual = extractFromCommonMetrics[Long](SimpleApp.commonMetrics(cdrDS), "total_call_duration")
       assert(Map("A3245" -> 4.4, "A3241" -> 13.4) === actual)
     }
 
@@ -132,7 +132,7 @@ class SimpleAppSpec
         CDR("A3245", "callee_id1", "cell_id1", 2.3, "international", 0),
         CDR("A3241", "callee_id20", "cell_id2", 3.4, "international", 1)
       ).toDS()
-      val actual = extractFromMix[Double](SimpleApp.mix(cdrDS), "international_call_duration")
+      val actual = extractFromCommonMetrics[Double](SimpleApp.commonMetrics(cdrDS), "international_call_duration")
       assert(Map("A3245" -> 3.5, "A3241" -> 3.4) === actual)
     }
 
@@ -149,7 +149,7 @@ class SimpleAppSpec
         CDR("A3245", "callee_id1", "cell_id1", 2.3, "on-net", 0),
         CDR("A3241", "callee_id20", "cell_id2", 3.4, "on-net", 1)
       ).toDS()
-      val actual = extractFromMix[Double](SimpleApp.mix(cdrDS), "avg_on_net_call_duration")
+      val actual = extractFromCommonMetrics[Double](SimpleApp.commonMetrics(cdrDS), "avg_on_net_call_duration")
       assert(Map("A3241" -> 3.4, "A3245" -> 1.5) === actual)
     }
 
@@ -166,7 +166,7 @@ class SimpleAppSpec
         CDR("A3245", "callee_id1", "cell_id1", 20.3, "on-net", 0),
         CDR("A3241", "callee_id20", "cell_id2", 3.4, "on-net", 1)
       ).toDS()
-      val actual = extractFromMix[Long](SimpleApp.mix(cdrDS), "less_than_10_min_call_count")
+      val actual = extractFromCommonMetrics[Long](SimpleApp.commonMetrics(cdrDS), "less_than_10_min_call_count")
       assert(Map("A3245" -> 2, "A3241" -> 1) === actual)
     }
 
