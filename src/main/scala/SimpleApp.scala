@@ -137,11 +137,10 @@ object SimpleApp {
     override def outputEncoder: Encoder[(String, CellStats)] = implicitly[Encoder[(String, CellStats)]]
   }
 
-  private def mostUsedCellPerCaller(ordering: Ordering[(String, CellStats)])(cdrDS: Dataset[CDR]): Map[String, (String, CellStats)] =
+  private def mostUsedCellPerCaller(ordering: Ordering[(String, CellStats)])(cdrDS: Dataset[CDR]): Dataset[(String, (String, CellStats))] =
     cdrDS
       .groupByKey(_.caller_id)
       .agg(new CellStatsAggregator(ordering).toColumn)
-      .collect().toMap
 
   val mostUsedCellByUseCountPerCaller = mostUsedCellPerCaller(useCountOrdering) _
   val mostUsedCellByDurationPerCaller = mostUsedCellPerCaller(durationOrdering) _

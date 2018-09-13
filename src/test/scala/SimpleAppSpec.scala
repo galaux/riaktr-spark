@@ -32,10 +32,11 @@ class SimpleAppSpec
         CDR("A3241", "callee_id20", "cell_id30", 122.4, "type2", 1),
         CDR("A3241", "callee_id20", "cell_id30", 122.4, "type2", 1)
       ).toDS()
-      assert(Map(
+      val expected = Map(
         "A3245" -> ("cell_id2", (2L, 441.6)),
-        "A3241" -> ("cell_id30", (2L, 244.8))
-      ) === SimpleApp.mostUsedCellByDurationPerCaller(cdrDS))
+        "A3241" -> ("cell_id30", (2L, 244.8)))
+      val actual = SimpleApp.mostUsedCellByDurationPerCaller(cdrDS).collect().toMap
+      assert(expected === actual)
     }
 
   }
