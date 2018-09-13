@@ -24,7 +24,7 @@ class SimpleAppSpec2
         CDR("A3241", "callee_id21", "cell_id2", 122.4, "type2", 1),
         CDR("A3241", "callee_id22", "cell_id2", 122.4, "type2", 1)
       ).toDS()
-      val result = SimpleApp.allInOne(cdrDS)
+      val result = SimpleApp2.allInOne(cdrDS)
       assert(Map("A3245" -> 2, "A3241" -> 3) === result.collect().toMap.mapValues(_.distinctCalleeCount))
     }
 
@@ -56,7 +56,7 @@ class SimpleAppSpec2
         "fromB" -> Seq("toZ"),
         "fromC" -> Seq("toX", "toY", "toZ")
       )
-      val result = SimpleApp.allInOne(cdrDS)
+      val result = SimpleApp2.allInOne(cdrDS)
       assert(expected === result.collect().toMap.mapValues(_.top3Callees))
     }
 
@@ -73,7 +73,7 @@ class SimpleAppSpec2
         CDR("A3241", "callee_id20", "cell_id2", 122.4, "type2", 1),
         CDR("A3241", "callee_id20", "cell_id2", 122.4, "type2", 1)
       ).toDS()
-      val result = SimpleApp.allInOne(cdrDS)
+      val result = SimpleApp2.allInOne(cdrDS)
       assert(Map("A3245" -> 1, "A3241" -> 2) === result.collect().toMap.mapValues(_.droppedCallsCount))
     }
 
@@ -91,7 +91,7 @@ class SimpleAppSpec2
         CDR("A3241", "callee_id20", "cell_id2", 3.9, "type2", 1),
         CDR("A3241", "callee_id20", "cell_id2", 3.1, "type2", 1)
       ).toDS()
-      val result = SimpleApp.allInOne(cdrDS)
+      val result = SimpleApp2.allInOne(cdrDS)
       assert(Map("A3245" -> 4.4, "A3241" -> 13.4) === result.collect().toMap.mapValues(_.totalCallDuration))
     }
 
@@ -108,27 +108,44 @@ class SimpleAppSpec2
         CDR("A3245", "callee_id1", "cell_id1", 2.3, "international", 0),
         CDR("A3241", "callee_id20", "cell_id2", 3.4, "international", 1)
       ).toDS()
-      val result = SimpleApp.allInOne(cdrDS)
+      val result = SimpleApp2.allInOne(cdrDS)
       assert(Map("A3245" -> 3.5, "A3241" -> 3.4) === result.collect().toMap.mapValues(_.internationalCallDuration))
     }
 
   }
 
-    describe("onNetCallAverageDuration") {
+  describe("onNetCallAverageDuration") {
 
-      it("should correctly compute the on-net call average duration") {
+    it("should correctly compute the on-net call average duration") {
 
-        val cdrDS = Seq(
-          CDR("A3245", "callee_id1", "cell_id1", 0.7, "on-net", 0),
-          CDR("A3245", "callee_id1", "cell_id1", 1.2, "international", 0),
-          CDR("A3245", "callee_id1", "cell_id1", 1.2, "off-net", 0),
-          CDR("A3245", "callee_id1", "cell_id1", 2.3, "on-net", 0),
-          CDR("A3241", "callee_id20", "cell_id2", 3.4, "on-net", 1)
-        ).toDS()
-        val result = SimpleApp.allInOne(cdrDS)
-        assert(Map("A3241" -> 3.4, "A3245" -> 1.5) === result.collect().toMap.mapValues(_.onNetCallAverage))
-      }
-
+      val cdrDS = Seq(
+        CDR("A3245", "callee_id1", "cell_id1", 0.7, "on-net", 0),
+        CDR("A3245", "callee_id1", "cell_id1", 1.2, "international", 0),
+        CDR("A3245", "callee_id1", "cell_id1", 1.2, "off-net", 0),
+        CDR("A3245", "callee_id1", "cell_id1", 2.3, "on-net", 0),
+        CDR("A3241", "callee_id20", "cell_id2", 3.4, "on-net", 1)
+      ).toDS()
+      val result = SimpleApp2.allInOne(cdrDS)
+      assert(Map("A3241" -> 3.4, "A3245" -> 1.5) === result.collect().toMap.mapValues(_.onNetCallAverage))
     }
+
+  }
+
+  describe("lessThan10minCallCount") {
+
+    it("should correctly compute the count of calls that lasted less than 10'") {
+
+      val cdrDS = Seq(
+        CDR("A3245", "callee_id1", "cell_id1", 0.9, "on-net", 0),
+        CDR("A3245", "callee_id1", "cell_id1", 10.2, "international", 0),
+        CDR("A3245", "callee_id1", "cell_id1", 1.2, "off-net", 0),
+        CDR("A3245", "callee_id1", "cell_id1", 20.3, "on-net", 0),
+        CDR("A3241", "callee_id20", "cell_id2", 3.4, "on-net", 1)
+      ).toDS()
+      val result = SimpleApp2.allInOne(cdrDS)
+      assert(Map("A3245" -> 2, "A3241" -> 1) === result.collect().toMap.mapValues(_.lessThan10minCallCount))
+    }
+
+  }
 
 }
