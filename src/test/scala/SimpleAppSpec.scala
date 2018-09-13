@@ -1,5 +1,6 @@
 import SimpleApp.{CDR, Cell}
 import com.holdenkarau.spark.testing.{DatasetSuiteBase, RDDComparisons}
+import org.apache.spark.sql.{DataFrame, Dataset, Row}
 import org.scalactic.TolerantNumerics
 import org.scalatest.FunSpec
 
@@ -10,6 +11,12 @@ class SimpleAppSpec
 
   import sqlContext.implicits._
   implicit val doubleEquality = TolerantNumerics.tolerantDoubleEquality(0.001)
+
+  def extractFromMix[T](df: DataFrame, fieldName: String): Map[String, T] =
+    df.collect()
+      .map { row => (row.getAs[String]("caller_id"), row.getAs[T](fieldName)) }
+      .toMap
+
 
   describe("mostUsedCells") {
 
@@ -60,6 +67,7 @@ class SimpleAppSpec
     }
 
   }
+
   describe("distinctCalleeCount") {
 
     it("should detect duplicate callees") {
@@ -72,8 +80,8 @@ class SimpleAppSpec
         CDR("A3241", "callee_id21", "cell_id2", 122.4, "type2", 1),
         CDR("A3241", "callee_id22", "cell_id2", 122.4, "type2", 1)
       ).toDS()
-      val cdrByCaller = SimpleApp.expandColumns(cdrDS).groupBy("caller_id")
-      assert(Map("A3245" -> 2, "A3241" -> 3) === SimpleApp.distinctCalleeCountPerCaller(cdrByCaller))
+      val actual = extractFromMix[Long](SimpleApp.mix(cdrDS), "distinct_callee_count")
+      assert(Map("A3245" -> 2, "A3241" -> 3) === actual)
     }
 
   }
@@ -89,8 +97,8 @@ class SimpleAppSpec
         CDR("A3241", "callee_id20", "cell_id2", 122.4, "type2", 1),
         CDR("A3241", "callee_id20", "cell_id2", 122.4, "type2", 1)
       ).toDS()
-      val cdrByCaller = SimpleApp.expandColumns(cdrDS).groupBy("caller_id")
-      assert(Map("A3245" -> 1, "A3241" -> 2) === SimpleApp.droppedCallCountPerCaller(cdrByCaller))
+      val actual = extractFromMix[Long](SimpleApp.mix(cdrDS), "dropped_call_count")
+      assert(Map("A3245" -> 1, "A3241" -> 2) === actual)
     }
 
   }
@@ -107,8 +115,8 @@ class SimpleAppSpec
         CDR("A3241", "callee_id20", "cell_id2", 3.9, "type2", 1),
         CDR("A3241", "callee_id20", "cell_id2", 3.1, "type2", 1)
       ).toDS()
-      val cdrByCaller = SimpleApp.expandColumns(cdrDS).groupBy("caller_id")
-      assert(Map("A3245" -> 4.4, "A3241" -> 13.4) === SimpleApp.totalCallDurationPerCaller(cdrByCaller))
+      val actual = extractFromMix[Long](SimpleApp.mix(cdrDS), "total_call_duration")
+      assert(Map("A3245" -> 4.4, "A3241" -> 13.4) === actual)
     }
 
   }
@@ -124,8 +132,8 @@ class SimpleAppSpec
         CDR("A3245", "callee_id1", "cell_id1", 2.3, "international", 0),
         CDR("A3241", "callee_id20", "cell_id2", 3.4, "international", 1)
       ).toDS()
-      val cdrByCaller = SimpleApp.expandColumns(cdrDS).groupBy("caller_id")
-      assert(Map("A3245" -> 3.5, "A3241" -> 3.4) === SimpleApp.internationalCallDurationPerCaller(cdrByCaller))
+      val actual = extractFromMix[Double](SimpleApp.mix(cdrDS), "international_call_duration")
+      assert(Map("A3245" -> 3.5, "A3241" -> 3.4) === actual)
     }
 
   }
@@ -141,8 +149,8 @@ class SimpleAppSpec
         CDR("A3245", "callee_id1", "cell_id1", 2.3, "on-net", 0),
         CDR("A3241", "callee_id20", "cell_id2", 3.4, "on-net", 1)
       ).toDS()
-      val cdrByCaller = SimpleApp.expandColumns(cdrDS).groupBy("caller_id")
-      assert(Map("A3241" -> 3.4, "A3245" -> 1.5) === SimpleApp.onNetCallAverageDurationPerCaller(cdrByCaller))
+      val actual = extractFromMix[Double](SimpleApp.mix(cdrDS), "avg_on_net_call_duration")
+      assert(Map("A3241" -> 3.4, "A3245" -> 1.5) === actual)
     }
 
   }
@@ -158,8 +166,8 @@ class SimpleAppSpec
         CDR("A3245", "callee_id1", "cell_id1", 20.3, "on-net", 0),
         CDR("A3241", "callee_id20", "cell_id2", 3.4, "on-net", 1)
       ).toDS()
-      val cdrByCaller = SimpleApp.expandColumns(cdrDS).groupBy("caller_id")
-      assert(Map("A3245" -> 2, "A3241" -> 1) === SimpleApp.lessThan10minCallCountPerCaller(cdrByCaller))
+      val actual = extractFromMix[Long](SimpleApp.mix(cdrDS), "less_than_10_min_call_count")
+      assert(Map("A3245" -> 2, "A3241" -> 1) === actual)
     }
 
   }

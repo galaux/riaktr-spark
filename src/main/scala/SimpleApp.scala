@@ -171,47 +171,16 @@ object SimpleApp {
         "lasts_less_than_10_min",
         when($"duration" <= 10.0, 1).otherwise(0))
 
-  def distinctCalleeCountPerCaller(cdrByCaller: RelationalGroupedDataset): Map[String, Long] =
-    cdrByCaller
-      .agg(countDistinct("callee_id") as "callee_count")
-      .collect()
-      .map { case Row(caller_id: String, callee_count: Long) => (caller_id, callee_count) }
-      .toMap
-
-  def droppedCallCountPerCaller(cdrByCaller: RelationalGroupedDataset): Map[String, Long] =
-    cdrByCaller
-      .agg(sum("dropped") as "dropped_count")
-      .collect()
-      .map { case Row(caller_id: String, dropped_count: Long) => (caller_id, dropped_count) }
-      .toMap
-
-  def totalCallDurationPerCaller(cdrByCaller: RelationalGroupedDataset): Map[String, Double] =
-    cdrByCaller
-      .agg(sum("duration") as "total_duration")
-      .collect()
-      .map { case Row(caller_id: String, total_duration: Double) => (caller_id, total_duration) }
-      .toMap
-
-  def internationalCallDurationPerCaller(cdrByCaller: RelationalGroupedDataset): Map[String, Double] =
-    cdrByCaller
-      .agg(sum("international_duration") as "international_duration")
-      .collect()
-      .map { case Row(caller_id: String, total_duration: Double) => (caller_id, total_duration) }
-      .toMap
-
-  def onNetCallAverageDurationPerCaller(cdrByCaller: RelationalGroupedDataset): Map[String, Double] =
-    cdrByCaller
-      .agg(avg("on_net_duration") as "avg_duration")
-      .collect()
-      .map { case Row(caller_id: String, avg_duration: Double) => (caller_id, avg_duration) }
-      .toMap
-
-  def lessThan10minCallCountPerCaller(cdrByCaller: RelationalGroupedDataset): Map[String, Long] =
-    cdrByCaller
-      .agg(sum("lasts_less_than_10_min") as "less_than_10_min_duration")
-      .collect()
-      .map { e => (e.getAs[String](0), e.getAs[Long](1))}
-      .toMap
+  def mix(cdrDS: Dataset[CDR]): DataFrame =
+    expandColumns(cdrDS)
+      .groupBy("caller_id")
+      .agg(
+        countDistinct("callee_id") as "distinct_callee_count",
+        sum("dropped") as "dropped_call_count",
+        sum("duration") as "total_call_duration",
+        sum("international_duration") as "international_call_duration",
+        avg("on_net_duration") as "avg_on_net_call_duration",
+        sum("lasts_less_than_10_min") as "less_than_10_min_call_count")
 
   def top3CalleeIdsPerCaller(cdrDS: Dataset[CDR]): Map[String, Seq[String]] = {
 
