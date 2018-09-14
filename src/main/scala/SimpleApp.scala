@@ -77,7 +77,7 @@ object SimpleApp {
       p.println("""|Most used cell by duration per caller
                    |=====================================
                    |
-                   |Schema: (<caller_id>,(CellId(<cell_id>,<cell_longitude>,<cell_latitude>),CellStats(<cell_use_count>,<cell_use_duration>)))
+                   |Schema: (<caller_id>,(Cell(<cell_id>,<cell_longitude>,<cell_latitude>),CellAccumulator(<cell_use_count>,<cell_use_duration>)))
                    |
         """.stripMargin)
       mostUsedCellByDurationPerCaller(cdrDS, cellDS).collect().map(p.println)
@@ -106,57 +106,55 @@ object SimpleApp {
     spark.stop()
   }
 
-  object durationOrdering extends Ordering[(CellId, CellStats)] {
-    def compare(a:(CellId, CellStats), b: (CellId, CellStats)) = a._2.totalDuration compare b._2.totalDuration
+  object durationOrdering extends Ordering[(Cell, CellAccumulators)] {
+    def compare(a:(Cell, CellAccumulators), b: (Cell, CellAccumulators)) = a._2.totalDuration compare b._2.totalDuration
   }
 
-  object useCountOrdering extends Ordering[(CellId, CellStats)] {
-    def compare(a:(CellId, CellStats), b: (CellId, CellStats)) = a._2.useCount compare b._2.useCount
+  object useCountOrdering extends Ordering[(Cell, CellAccumulators)] {
+    def compare(a:(Cell, CellAccumulators), b: (Cell, CellAccumulators)) = a._2.useCount compare b._2.useCount
   }
 
-  case class CellStats(useCount: Long = 0L, totalDuration: Double = 0.0)
+  case class CellAccumulators(useCount: Long = 0L, totalDuration: Double = 0.0)
 
-  case class CellId(id: String, longitude: Double, latitude: Double)
+  private class CellAggregator(ordering: Ordering[(Cell, CellAccumulators)])
+    extends Aggregator[ExtendedCDR, Map[Cell, CellAccumulators], (Cell, CellAccumulators)] {
 
-  private class CellStatsAggregator(ordering: Ordering[(CellId, CellStats)])
-    extends Aggregator[ExtendedCDR, Map[CellId, CellStats], (CellId, CellStats)] {
+    override def zero: Map[Cell, CellAccumulators] = Map.empty
 
-    override def zero: Map[CellId, CellStats] = Map.empty
-
-    override def reduce(cellStatsList: Map[CellId, CellStats], cdr: ExtendedCDR): Map[CellId, CellStats] = {
-      val cellId = CellId(cdr.cell_id, cdr.longitude, cdr.latitude)
-      val prevCellStats = cellStatsList.getOrElse(cellId, CellStats())
-      val newCellStats = CellStats(prevCellStats.useCount + 1, prevCellStats.totalDuration + cdr.duration)
-      cellStatsList.updated(cellId, newCellStats)
+    override def reduce(accumulators: Map[Cell, CellAccumulators], cdr: ExtendedCDR): Map[Cell, CellAccumulators] = {
+      val cell = Cell(cdr.cell_id, cdr.longitude, cdr.latitude)
+      val prevAccumulators = accumulators.getOrElse(cell, CellAccumulators())
+      val nextAccumulators = CellAccumulators(prevAccumulators.useCount + 1, prevAccumulators.totalDuration + cdr.duration)
+      accumulators.updated(cell, nextAccumulators)
     }
 
-    override def merge(cellUseCountA: Map[CellId, CellStats], cellUseCountB: Map[CellId, CellStats]): Map[CellId, CellStats] = {
-      val allKeys = cellUseCountA.keys ++ cellUseCountB.keys
-      allKeys.map { key =>
-        val cellStatsA = cellUseCountA.getOrElse(key, CellStats())
-        val cellStatsB = cellUseCountB.getOrElse(key, CellStats())
-        val newStats = CellStats(cellStatsA.useCount + cellStatsB.useCount, cellStatsA.totalDuration + cellStatsB.totalDuration)
-        (key, newStats)
+    override def merge(accumulatorsListA: Map[Cell, CellAccumulators], accumulatorsListB: Map[Cell, CellAccumulators]): Map[Cell, CellAccumulators] = {
+      val allKeys = accumulatorsListA.keys ++ accumulatorsListB.keys
+      allKeys.map { cell =>
+        val accumulatorsA = accumulatorsListA.getOrElse(cell, CellAccumulators())
+        val accumulatorsB = accumulatorsListB.getOrElse(cell, CellAccumulators())
+        val nextAccumulators = CellAccumulators(accumulatorsA.useCount + accumulatorsB.useCount, accumulatorsA.totalDuration + accumulatorsB.totalDuration)
+        (cell, nextAccumulators)
       }.toMap
     }
 
-    override def finish(reduction: Map[CellId, CellStats]): (CellId, CellStats) =
+    override def finish(reduction: Map[Cell, CellAccumulators]): (Cell, CellAccumulators) =
       reduction
         .toSeq
         .sorted(ordering)
         .reverse
         .head
 
-    override def bufferEncoder: Encoder[Map[CellId, CellStats]] = implicitly[Encoder[Map[CellId, CellStats]]]
+    override def bufferEncoder: Encoder[Map[Cell, CellAccumulators]] = implicitly[Encoder[Map[Cell, CellAccumulators]]]
 
-    override def outputEncoder: Encoder[(CellId, CellStats)] = implicitly[Encoder[(CellId, CellStats)]]
+    override def outputEncoder: Encoder[(Cell, CellAccumulators)] = implicitly[Encoder[(Cell, CellAccumulators)]]
   }
 
-  private def mostUsedCellPerCaller(ordering: Ordering[(CellId, CellStats)])(cdrDS: Dataset[CDR], cellDS: Dataset[Cell]): Dataset[(String, (CellId, CellStats))] =
+  private def mostUsedCellPerCaller(ordering: Ordering[(Cell, CellAccumulators)])(cdrDS: Dataset[CDR], cellDS: Dataset[Cell]): Dataset[(String, (Cell, CellAccumulators))] =
     cdrDS.join(cellDS, "cell_id")
       .as[ExtendedCDR]
       .groupByKey(_.caller_id)
-      .agg(new CellStatsAggregator(ordering).toColumn)
+      .agg(new CellAggregator(ordering).toColumn)
 
   val mostUsedCellByUseCountPerCaller = mostUsedCellPerCaller(useCountOrdering) _
   val mostUsedCellByDurationPerCaller = mostUsedCellPerCaller(durationOrdering) _
@@ -191,14 +189,14 @@ object SimpleApp {
 
       override def zero: Map[String, Long] = Map.empty
 
-      override def reduce(calleeCallCount: Map[String, Long], cdr: CDR): Map[String, Long] = {
-        val oldValue = calleeCallCount.getOrElse(cdr.callee_id, 0L)
-        calleeCallCount.updated(cdr.callee_id, oldValue + 1)
+      override def reduce(accumulatorsList: Map[String, Long], cdr: CDR): Map[String, Long] = {
+        val prevAccumulators = accumulatorsList.getOrElse(cdr.callee_id, 0L)
+        accumulatorsList.updated(cdr.callee_id, prevAccumulators + 1)
       }
 
-      override def merge(calleeCallCountA: Map[String, Long], calleeCallCountB: Map[String, Long]): Map[String, Long] = {
-        val allKeys = calleeCallCountA.keys ++ calleeCallCountB.keys
-        allKeys.map { key => (key, calleeCallCountA.getOrElse(key, 0L) + calleeCallCountB.getOrElse(key, 0L)) }.toMap
+      override def merge(accumulatorListA: Map[String, Long], accumulatorListB: Map[String, Long]): Map[String, Long] = {
+        val allKeys = accumulatorListA.keys ++ accumulatorListB.keys
+        allKeys.map { key => (key, accumulatorListA.getOrElse(key, 0L) + accumulatorListB.getOrElse(key, 0L)) }.toMap
       }
 
       override def finish(reduction: Map[String, Long]): Seq[String] =

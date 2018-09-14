@@ -1,6 +1,6 @@
-import SimpleApp.{CDR, Cell, CellId, CellStats}
+import SimpleApp.{CDR, Cell, CellAccumulators}
 import com.holdenkarau.spark.testing.{DatasetSuiteBase, RDDComparisons}
-import org.apache.spark.sql.{DataFrame, Dataset, Row}
+import org.apache.spark.sql.DataFrame
 import org.scalactic.TolerantNumerics
 import org.scalatest.FunSpec
 
@@ -41,8 +41,8 @@ class SimpleAppSpec
       ).toDS()
 
       val expected = Map(
-        "A3245" -> (CellId("cell_id2", 4.39383786825585, 50.79807518156911), CellStats(2L, 441.6)),
-        "A3241" -> (CellId("cell_id30", 2.40814532192845, 50.79519411424009), CellStats(2L, 244.8)))
+        "A3245" -> (Cell("cell_id2", 4.39383786825585, 50.79807518156911), CellAccumulators(2L, 441.6)),
+        "A3241" -> (Cell("cell_id30", 2.40814532192845, 50.79519411424009), CellAccumulators(2L, 244.8)))
       val actual = SimpleApp.mostUsedCellByDurationPerCaller(cdrDS, cellDS).collect().toMap
       assert(expected === actual)
     }
