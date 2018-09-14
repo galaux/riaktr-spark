@@ -1,4 +1,6 @@
 /* SimpleApp.scala */
+import java.io.{File, PrintWriter}
+
 import org.apache.spark.sql._
 import org.apache.spark.sql.expressions.Aggregator
 import org.apache.spark.sql.functions._
@@ -28,41 +30,78 @@ object SimpleApp {
                          `type`: String,
                          dropped: Int)
 
+  def printToFile(f: java.io.File)(op: java.io.PrintWriter => Unit) {
+    val p = new java.io.PrintWriter(f)
+    try { op(p) } finally { p.close() }
+  }
+
+
   def main(args: Array[String]) {
-    // TODO load the cellDS and apply a distinct on cell_id
+
+    if (args.length != 3) {
+      System.err.println(
+        """Not enough parameters.
+          |Please provide:
+          |- cdrs.csv file path
+          |- cells.csv file path
+          |- output (txt) file path
+        """.stripMargin)
+      System.out.println(args.toList)
+      System.exit(1)
+    }
+
+    val cdrsPath = args(0)
+    val cellsPath = args(1)
+    val outPath = args(2)
+
+    System.out.println(
+      s"""Using:
+        |- cdrs file:\t$cdrsPath
+        |- cells file:\t$cellsPath
+        |- output file:\t$outPath
+      """.stripMargin)
+
     val cdrDS = spark.read
       .option("header", "true")
       .schema(Encoders.product[CDR].schema)
-      .csv("/enc/home/miguel/documents/it/spark/riaktr/src/test/resources/cdrs.csv") // TODO take path from args
+      .csv(cdrsPath)
       .as[CDR]
 
     val cellDS = spark.read
       .option("header", "true")
       .schema(Encoders.product[Cell].schema)
-      .csv("/enc/home/miguel/documents/it/spark/riaktr/src/test/resources/cells.csv") // TODO take path from args
+      .csv(cellsPath)
       .as[Cell]
 
-    // TODO write output to file instead of printing it to stdout
-    mostUsedCellByDurationPerCaller(cdrDS, cellDS)
-      .repartition(1)
-      .write
-      .format("csv")
-      .option("header", "true")
-      .save("/tmp/most_used_cells_per_caller.csv")
+    printToFile(new File(outPath)) { p =>
+      p.println("""|Most used cell by duration per caller
+                   |=====================================
+                   |
+                   |Schema: (<caller_id>,(CellId(<cell_id>,<cell_longitude>,<cell_latitude>),CellStats(<cell_use_count>,<cell_use_duration>)))
+                   |
+        """.stripMargin)
+      mostUsedCellByDurationPerCaller(cdrDS, cellDS).collect().map(p.println)
 
-    top3CalleeIdsPerCaller(cdrDS)
-      .repartition(1)
-      .write
-      .format("csv")
-      .option("header", "true")
-      .save("/tmp/top3_callee_ids_per_caller.csv")
+      p.println("""
+                  |
+                  |Top-3 callee ids
+                  |================
+                  |
+                  |Schema: (<caller_id>,<list_of_callee_ids>)
+                  |
+        """.stripMargin)
+      top3CalleeIdsPerCaller(cdrDS).collect().map(p.println)
 
-    commonMetrics(cdrDS)
-      .repartition(1)
-      .write
-      .format("csv")
-      .option("header", "true")
-      .save("/tmp/common_metrics_per_caller.csv")
+      p.println("""
+                  |
+                  |Common metrics
+                  |==============
+                  |
+                  |Schema: [<caller_id>,<distinct_callee_count>,<dropped_call_count>,<total_call_duration>,<international_call_duration>,<avg_on_net_call_duration>,<less_than_10_min_call_count>]
+                  |
+        """.stripMargin)
+      commonMetrics(cdrDS).collect().map(p.println)
+    }
 
     spark.stop()
   }
