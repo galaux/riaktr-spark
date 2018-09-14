@@ -43,61 +43,26 @@ object SimpleApp {
       .as[Cell]
 
     // TODO write output to file instead of printing it to stdout
-    val resultStr =
-      s"""Most used cell
-         |==============
-         |
-         |${mostUsedCellByDurationPerCaller(cdrDS, cellDS)}
-         |
-         |
-         |MostUsedCellByUseCountPerCaller
-         |===============================
-         |
-         |TODO
-         |
-         |
-         |Number of distinct callees
-         |==========================
-         |
-         |distinctCalleeCountPerCaller
-         |
-         |
-         |Number of dropped calls
-         |=======================
-         |
-         |droppedCallCountPerCaller
-         |
-         |
-         |Total duration of the calls
-         |===========================
-         |
-         |totalCallDurationPerCaller
-         |
-         |
-         |Total duration of the international calls
-         |=========================================
-         |
-         |internationalCallDurationPerCaller
-         |
-         |
-         |Average duration of the on-net calls
-         |====================================
-         |
-         |onNetCallAverageDurationPerCaller
-         |
-         |
-         |Number of calls that lasted less than 10 minutes (included)
-         |===========================================================
-         |
-         |lessThan10minCallCountPerCaller
-         |
-         |
-         |Top-3 callee ids
-         |================
-         |
-         |top3CalleeIdsPerCaller
-       """.stripMargin
-    println(resultStr)
+    mostUsedCellByDurationPerCaller(cdrDS, cellDS)
+      .repartition(1)
+      .write
+      .format("csv")
+      .option("header", "true")
+      .save("/tmp/most_used_cells_per_caller.csv")
+
+    top3CalleeIdsPerCaller(cdrDS)
+      .repartition(1)
+      .write
+      .format("csv")
+      .option("header", "true")
+      .save("/tmp/top3_callee_ids_per_caller.csv")
+
+    commonMetrics(cdrDS)
+      .repartition(1)
+      .write
+      .format("csv")
+      .option("header", "true")
+      .save("/tmp/common_metrics_per_caller.csv")
 
     spark.stop()
   }
@@ -156,20 +121,6 @@ object SimpleApp {
 
   val mostUsedCellByUseCountPerCaller = mostUsedCellPerCaller(useCountOrdering) _
   val mostUsedCellByDurationPerCaller = mostUsedCellPerCaller(durationOrdering) _
-
-  def mostUsedCellCoordinates(cdrDS: Dataset[CDR], cellDS: Dataset[Cell]): Map[String, (String, Double, Double)] = {
-    val mostUsedCellDS = mostUsedCellByDurationPerCaller(cdrDS)
-      .mapValues(_._1)
-      .toList
-      .toDF("caller_id", "cell_id")
-    mostUsedCellDS
-      .join(cellDS, mostUsedCellDS("cell_id") === cellDS("cell_id"))
-      .collect()
-      .map { case Row(caller_id: String, cell_id: String, _: String, longitude: Double, latitude: Double) =>
-        (caller_id, (cell_id, longitude, latitude))
-      }.toMap
-  }
-
 
   def expandColsForCommonMetrics(cdrDS: Dataset[CDR]): Dataset[Row] =
     cdrDS
