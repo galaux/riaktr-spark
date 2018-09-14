@@ -156,7 +156,28 @@ object SimpleApp {
       .groupByKey(_.caller_id)
       .agg(new CellAggregator(ordering).toColumn)
 
+  /**
+    * Return metrics over the most used cell per caller.
+    *
+    * This version compares cells by the number of time they were used.
+    *
+    * @param cdrDS the CDR dataset
+    * @param cellDS the cell dataset
+    * @return a Dataset of caller id to a tuple of cell (id and coordinates) and accumulated values
+    *         (use count and duration count)
+    */
   val mostUsedCellByUseCountPerCaller = mostUsedCellPerCaller(useCountOrdering) _
+
+  /**
+    * Compute metrics over the most used cell per caller.
+    *
+    * This version compares cells by their total call duration.
+    *
+    * @param cdrDS the CDR dataset
+    * @param cellDS the cell dataset
+    * @return a Dataset of caller id to a tuple of cell (id and coordinates) and accumulated values
+    *         (use count and duration count)
+    */
   val mostUsedCellByDurationPerCaller = mostUsedCellPerCaller(durationOrdering) _
 
   def expandColsForCommonMetrics(cdrDS: Dataset[CDR]): Dataset[Row] =
@@ -171,6 +192,14 @@ object SimpleApp {
         "lasts_less_than_10_min",
         when($"duration" <= 10.0, 1).otherwise(0))
 
+  /**
+    * Compute common trivial metrics per caller.
+    *
+    * @param cdrDS the CDR dataset
+    * @return a DataFrame of: caller_id, distinct_callee_count, dropped_call_count,
+    *         total_call_duration, international_call_duration, avg_on_net_call_duration,
+    *         less_than_10_min_call_count
+    */
   def commonMetrics(cdrDS: Dataset[CDR]): DataFrame =
     expandColsForCommonMetrics(cdrDS)
       .groupBy("caller_id")
@@ -183,6 +212,12 @@ object SimpleApp {
         sum("lasts_less_than_10_min") as "less_than_10_min_call_count")
 
 
+  /**
+    * Compute the top-3 callees per caller.
+    *
+    * @param cdrDS the CDR dataset
+    * @return a Dataset of caller_id to a list of callee_ids
+    */
   def top3CalleeIdsPerCaller(cdrDS: Dataset[CDR]): Dataset[(String, Seq[String])] = {
 
     val top3CalleeIdsAgg = new Aggregator[CDR, Map[String, Long], Seq[String]] {
