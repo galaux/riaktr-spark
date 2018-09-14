@@ -76,6 +76,9 @@ object SimpleApp {
       p.println("""|Most used cell by duration per caller
                    |=====================================
                    |
+                   |A cell is considered as the most used based on the total time it spent relaying calls.
+                   |See SimpleApp.mostUsedCellByUseCountPerCaller for an alternative.
+                   |
                    |Schema: (<caller_id>,(Cell(<cell_id>,<cell_longitude>,<cell_latitude>),CellAccumulator(<cell_use_count>,<cell_use_duration>)))
                    |
         """.stripMargin)
