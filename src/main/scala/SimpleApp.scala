@@ -1,5 +1,4 @@
-/* SimpleApp.scala */
-import java.io.{File, PrintWriter}
+import java.io.File
 
 import org.apache.spark.sql._
 import org.apache.spark.sql.expressions.Aggregator

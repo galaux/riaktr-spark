@@ -1,13 +1,12 @@
 import SimpleApp.{CDR, Cell, CellAccumulators}
-import com.holdenkarau.spark.testing.{DatasetSuiteBase, RDDComparisons}
+import com.holdenkarau.spark.testing.DatasetSuiteBase
 import org.apache.spark.sql.DataFrame
 import org.scalactic.TolerantNumerics
 import org.scalatest.FunSpec
 
 class SimpleAppSpec
   extends FunSpec
-    with DatasetSuiteBase
-    with RDDComparisons {
+    with DatasetSuiteBase {
 
   import sqlContext.implicits._
   implicit val doubleEquality = TolerantNumerics.tolerantDoubleEquality(0.001)
