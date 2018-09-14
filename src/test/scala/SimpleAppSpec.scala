@@ -34,19 +34,33 @@ class SimpleAppSpec
       ).toDS()
 
       val cellDS = Seq(
-        Cell("cell_id1", 4.392824951181683, 50.794954017278855),
-        Cell("cell_id2", 4.39383786825585, 50.79807518156911),
-        Cell("cell_id3", 4.40814532192845, 50.79519411424009),
-        Cell("cell_id30", 2.40814532192845, 50.79519411424009)
+        Cell("cell_id1", Some(4.392824951181683), Some(50.794954017278855)),
+        Cell("cell_id2", Some(4.39383786825585), Some(50.79807518156911)),
+        Cell("cell_id3", Some(4.40814532192845), Some(50.79519411424009)),
+        Cell("cell_id30", Some(2.40814532192845), Some(50.79519411424009))
       ).toDS()
 
       val expected = Map(
-        "A3245" -> (Cell("cell_id2", 4.39383786825585, 50.79807518156911), CellAccumulators(2L, 441.6)),
-        "A3241" -> (Cell("cell_id30", 2.40814532192845, 50.79519411424009), CellAccumulators(2L, 244.8)))
+        "A3245" -> (Cell("cell_id2", Some(4.39383786825585), Some(50.79807518156911)), CellAccumulators(2L, 441.6)),
+        "A3241" -> (Cell("cell_id30", Some(2.40814532192845), Some(50.79519411424009)), CellAccumulators(2L, 244.8)))
       val actual = SimpleApp.mostUsedCellByDurationPerCaller(cdrDS, cellDS).collect().toMap
       assert(expected === actual)
     }
 
+    it("should work even though we don't have the cell in cellDS") {
+
+      val cdrDS = Seq(
+        CDR("A3241", "callee_id20", "cell_id30", 122.4, "type2", 1),
+        CDR("A3241", "callee_id20", "cell_id30", 122.4, "type2", 1),
+        CDR("A3241", "callee_id20", "cell_id2", 122.4, "type2", 1)
+      ).toDS()
+
+      val cellDS = Seq(Cell("cell_id2", Some(4.39383786825585), Some(50.79807518156911))).toDS()
+
+      val expected = Map("A3241" -> (Cell("cell_id30", None, None), CellAccumulators(2L, 244.8)))
+      val actual = SimpleApp.mostUsedCellByDurationPerCaller(cdrDS, cellDS).collect().toMap
+      assert(expected === actual)
+    }
   }
 
   describe("distinctCalleeCount") {

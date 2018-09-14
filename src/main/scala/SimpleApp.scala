@@ -13,8 +13,8 @@ object SimpleApp {
   import spark.implicits._
 
   case class Cell(cell_id: String,
-                  longitude: Double,
-                  latitude: Double)
+                  longitude: Option[Double],
+                  latitude: Option[Double])
   case class CDR(caller_id: String,
                  callee_id: String,
                  cell_id: String,
@@ -24,8 +24,8 @@ object SimpleApp {
   case class ExtendedCDR(caller_id: String,
                          callee_id: String,
                          cell_id: String,
-                         longitude: Double,
-                         latitude: Double,
+                         longitude: Option[Double],
+                         latitude: Option[Double],
                          duration: Double,
                          `type`: String,
                          dropped: Int)
@@ -151,7 +151,7 @@ object SimpleApp {
   }
 
   private def mostUsedCellPerCaller(ordering: Ordering[(Cell, CellAccumulators)])(cdrDS: Dataset[CDR], cellDS: Dataset[Cell]): Dataset[(String, (Cell, CellAccumulators))] =
-    cdrDS.join(cellDS, "cell_id")
+    cdrDS.join(cellDS, Seq("cell_id"), "left_outer")
       .as[ExtendedCDR]
       .groupByKey(_.caller_id)
       .agg(new CellAggregator(ordering).toColumn)
